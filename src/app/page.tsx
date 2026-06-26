@@ -236,12 +236,10 @@ export default async function Home() {
               </form>
             </>
           ) : (
-            <form action={handleSignIn}>
-              <button type="submit" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", backgroundColor: "#1DB954", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", cursor: "pointer" }}>
-                <SpotifyIcon size={18} />
-                <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#fff" }}>Continue with Spotify</span>
-              </button>
-            </form>
+            <a href="/api/auth/signin/spotify?callbackUrl=/onboarding" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", backgroundColor: "#1DB954", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", textDecoration: "none" }}>
+              <SpotifyIcon size={18} />
+              <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#fff" }}>Continue with Spotify</span>
+            </a>
           )}
 
           <a
