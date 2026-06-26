@@ -7,10 +7,10 @@ function fixUrl(req: NextRequest): NextRequest {
   return new NextRequest(url, req)
 }
 
-export async function GET(req: NextRequest, ctx: any) {
-  return handlers.GET(fixUrl(req), ctx)
+export async function GET(req: NextRequest) {
+  return handlers.GET(fixUrl(req))
 }
 
-export async function POST(req: NextRequest, ctx: any) {
-  return handlers.POST(fixUrl(req), ctx)
+export async function POST(req: NextRequest) {
+  return handlers.POST(fixUrl(req))
 }
