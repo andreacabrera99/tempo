@@ -48,7 +48,7 @@ async function searchCatalog(
   type: "playlist" | "show"
 ): Promise<SpotifyResult | null> {
   const res = await fetch(
-    `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=10&market=from_token`,
+    `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=20`,
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
   )
   if (!res.ok) return null
@@ -56,7 +56,7 @@ async function searchCatalog(
   const items: SpotifyResult[] = type === "playlist"
     ? (data.playlists?.items ?? []).filter(Boolean).map((p: SpotifyPlaylist) => ({ ...p, type: "playlist" as const }))
     : (data.shows?.items ?? []).filter(Boolean).map((s: SpotifyShow) => ({ ...s, type: "show" as const }))
-  return items.find((i) => i.images?.length > 0) ?? null
+  return items.find((i) => i.images?.length > 0) ?? items[0] ?? null
 }
 
 // Keywords that always get a 3x weight boost
@@ -100,16 +100,26 @@ async function findContent(
 ): Promise<SpotifyResult | null> {
   const mode = params.mode
 
+  // ── Shows (podcast / coaching) ───────────────────────────────────────────
   if (mode === "mix") {
     const types = (params.content ?? "music").split(",")
     if (types.includes("coaching")) {
-      return searchCatalog(token, "running coach audio guided training", "show")
+      return (
+        (await searchCatalog(token, "running coach audio guided training", "show")) ??
+        (await searchCatalog(token, "running coach podcast", "show")) ??
+        (await searchCatalog(token, "running workout music", "playlist"))
+      )
     }
     if (types.includes("podcasts")) {
-      return searchCatalog(token, "running podcast training", "show")
+      return (
+        (await searchCatalog(token, "running podcast training", "show")) ??
+        (await searchCatalog(token, "running podcast", "show")) ??
+        (await searchCatalog(token, "running workout music", "playlist"))
+      )
     }
   }
 
+  // ── Build keyword list ───────────────────────────────────────────────────
   const keywords: string[] = []
 
   if (mode === "cadence") {
@@ -126,6 +136,7 @@ async function findContent(
     keywords.push(...(LOCATION_KEYWORDS[params.location] ?? []))
   }
 
+  // ── Try user playlists (best score wins) ─────────────────────────────────
   const userPlaylists = await getUserPlaylists(token)
   let best: SpotifyPlaylist | null = null
   let bestScore = 0
@@ -135,16 +146,29 @@ async function findContent(
   }
   if (best && bestScore > 0) return best
 
-  let catalogQuery = "running"
+  // ── Catalog: specific query ──────────────────────────────────────────────
+  let specificQuery = "running workout playlist"
   if (mode === "cadence") {
-    catalogQuery = `running ${params.bpm ?? "160"} bpm workout`
+    specificQuery = `running ${params.bpm ?? "160"} bpm workout`
   } else if (mode === "mood") {
-    catalogQuery = MOOD_CATALOG_QUERY[params.mood] ?? "running playlist"
+    specificQuery = MOOD_CATALOG_QUERY[params.mood] ?? "running workout playlist"
   } else if (mode === "mix") {
-    catalogQuery = "running workout music playlist"
+    specificQuery = "running workout music playlist"
   }
 
-  return searchCatalog(token, catalogQuery, "playlist")
+  const specific = await searchCatalog(token, specificQuery, "playlist")
+  if (specific) return specific
+
+  // ── Catalog: generic running fallback ────────────────────────────────────
+  const generic = await searchCatalog(token, "running workout", "playlist")
+  if (generic) return generic
+
+  // ── Last resort: any user playlist ───────────────────────────────────────
+  const anyUserPlaylist = userPlaylists[0] ?? null
+  if (anyUserPlaylist) return anyUserPlaylist
+
+  // ── Absolute last resort: anything ───────────────────────────────────────
+  return searchCatalog(token, "workout", "playlist")
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
