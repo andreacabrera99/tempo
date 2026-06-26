@@ -3,12 +3,12 @@ import { redirect } from "next/navigation"
 
 async function handleSignIn() {
   "use server"
-  await signIn("spotify", { redirectTo: "/dashboard" })
+  await signIn("spotify", { redirectTo: "/onboarding" })
 }
 
 export default async function Home() {
   const session = await auth()
-  if (session) redirect("/dashboard")
+  if (session) redirect("/onboarding")
 
   return (
     <>
