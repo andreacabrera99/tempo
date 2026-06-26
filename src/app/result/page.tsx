@@ -45,7 +45,8 @@ async function getUserPlaylists(token: string): Promise<SpotifyPlaylist[]> {
 async function searchCatalog(
   token: string,
   query: string,
-  type: "playlist" | "show"
+  type: "playlist" | "show",
+  pickIndex = 0
 ): Promise<SpotifyResult | null> {
   const res = await fetch(
     `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=20`,
@@ -56,7 +57,10 @@ async function searchCatalog(
   const items: SpotifyResult[] = type === "playlist"
     ? (data.playlists?.items ?? []).filter(Boolean).map((p: SpotifyPlaylist) => ({ ...p, type: "playlist" as const }))
     : (data.shows?.items ?? []).filter(Boolean).map((s: SpotifyShow) => ({ ...s, type: "show" as const }))
-  return items.find((i) => i.images?.length > 0) ?? items[0] ?? null
+  const withImage = items.filter((i) => i.images?.length > 0)
+  const pool = withImage.length > 0 ? withImage : items
+  // pickIndex lets callers select a result other than #1 for variety
+  return pool[pickIndex % pool.length] ?? null
 }
 
 // Keywords that always get a 3x weight boost
@@ -85,13 +89,14 @@ const LOCATION_KEYWORDS: Record<string, string[]> = {
   trail:     ["trail", "mountain", "outdoor"],
 }
 
+// Genre-specific queries so Spotify returns genuinely different playlists per mood
 const MOOD_CATALOG_QUERY: Record<string, string> = {
-  hyped:      "hype running workout energy pump",
-  "locked-in":"focus run concentration workout",
-  floaty:     "easy run morning jogging chill",
-  heavy:      "power strength grind running workout",
-  chill:      "chill easy run recovery jogging",
-  angry:      "rage run intense workout rock",
+  hyped:      "rap trap hype workout pump",
+  "locked-in":"lo-fi focus deep concentration study",
+  floaty:     "indie ambient morning easy chill",
+  heavy:      "metal heavy gym power lifting",
+  chill:      "jazz lounge easy recovery soft",
+  angry:      "hardcore metal rage aggressive punk",
 }
 
 async function findContent(
@@ -135,10 +140,14 @@ async function findContent(
     contextKeywords.push(...(LOCATION_KEYWORDS[params.location] ?? []))
   }
 
-  // ── Build catalog query (always mood/context specific) ───────────────────
+  // ── Build catalog query (genre-specific so results differ by mood/BPM) ────
   let specificQuery = "running workout playlist"
   if (mode === "cadence") {
-    specificQuery = `running ${params.bpm ?? "160"} bpm workout`
+    const bpm = parseInt(params.bpm ?? "160")
+    if (bpm >= 180)      specificQuery = "sprint interval hiit electronic"
+    else if (bpm >= 165) specificQuery = "tempo run edm energetic"
+    else if (bpm >= 145) specificQuery = "steady run pop upbeat"
+    else                 specificQuery = "easy jog acoustic mellow"
   } else if (mode === "mood") {
     specificQuery = MOOD_CATALOG_QUERY[params.mood] ?? "running workout playlist"
   } else if (mode === "mix") {
@@ -164,7 +173,9 @@ async function findContent(
   if (contextBest) return contextBest
 
   // ── Phase 2: mood/context-specific catalog search ─────────────────────────
-  const specific = await searchCatalog(token, specificQuery, "playlist")
+  // Use seconds%5 as pick index (0-4) so the same query returns varied results
+  const pickIdx = Math.floor(Date.now() / 1000) % 5
+  const specific = await searchCatalog(token, specificQuery, "playlist", pickIdx)
   if (specific) return specific
 
   // ── Phase 3: any fitness match from user library ──────────────────────────
