@@ -127,7 +127,7 @@ function ModeStep({ onNext }: { onNext: (mode: string) => void }) {
         paddingTop: "calc(env(safe-area-inset-top) + 2rem)",
       }}
     >
-      <div className="flex items-center gap-2 mb-8">
+      <a href="/" className="flex items-center gap-2 mb-8" style={{ textDecoration: "none" }}>
         <BoltIcon color="#C8FF00" size={18} />
         <span
           className="uppercase"
@@ -141,7 +141,7 @@ function ModeStep({ onNext }: { onNext: (mode: string) => void }) {
         >
           TEMPO
         </span>
-      </div>
+      </a>
 
       <h1
         className="text-white leading-[0.92] mb-10"

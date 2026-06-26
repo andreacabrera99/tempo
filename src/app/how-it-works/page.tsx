@@ -434,9 +434,11 @@ export default function HowItWorks() {
       </section>
 
       {/* FOOTER */}
-      <footer style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", padding: "1.5rem 1.5rem 3rem" }}>
-        <BoltIcon />
-        <span style={{ fontFamily: "var(--font-oswald)", fontWeight: 700, fontSize: "1.1rem", color: "#fff", letterSpacing: "0.15em" }}>TEMPO</span>
+      <footer style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem 1.5rem 3rem" }}>
+        <a href="/" style={{ display: "flex", alignItems: "center", gap: "0.5rem", textDecoration: "none" }}>
+          <BoltIcon />
+          <span style={{ fontFamily: "var(--font-oswald)", fontWeight: 700, fontSize: "1.1rem", color: "#fff", letterSpacing: "0.15em" }}>TEMPO</span>
+        </a>
       </footer>
 
     </div>
