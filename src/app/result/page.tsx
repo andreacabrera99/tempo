@@ -119,34 +119,23 @@ async function findContent(
     }
   }
 
-  // ── Build keyword list ───────────────────────────────────────────────────
-  const keywords: string[] = []
+  // ── Build context keyword list (mood/BPM/location) ──────────────────────
+  const contextKeywords: string[] = []
 
   if (mode === "cadence") {
     const bpm = parseInt(params.bpm ?? "160")
-    keywords.push("run", "running")
-    if (bpm >= 180) keywords.push("sprint", "fast", "speed", "interval", "beast")
-    else if (bpm >= 165) keywords.push("tempo", "race", "fast", "energy")
-    else if (bpm >= 145) keywords.push("running", "workout", "energy", "steady")
-    else keywords.push("easy", "jog", "recovery", "light")
+    if (bpm >= 180) contextKeywords.push("sprint", "fast", "speed", "interval", "beast")
+    else if (bpm >= 165) contextKeywords.push("tempo", "race", "fast", "energy")
+    else if (bpm >= 145) contextKeywords.push("workout", "energy", "steady", "power")
+    else contextKeywords.push("easy", "jog", "recovery", "light", "morning")
   }
 
   if (mode === "mood" || mode === "mix") {
-    keywords.push(...(MOOD_KEYWORDS[params.mood] ?? ["run", "running"]))
-    keywords.push(...(LOCATION_KEYWORDS[params.location] ?? []))
+    contextKeywords.push(...(MOOD_KEYWORDS[params.mood] ?? []))
+    contextKeywords.push(...(LOCATION_KEYWORDS[params.location] ?? []))
   }
 
-  // ── Try user playlists (best score wins) ─────────────────────────────────
-  const userPlaylists = await getUserPlaylists(token)
-  let best: SpotifyPlaylist | null = null
-  let bestScore = 0
-  for (const pl of userPlaylists) {
-    const score = scorePlaylist(pl, keywords)
-    if (score > bestScore) { bestScore = score; best = pl }
-  }
-  if (best && bestScore > 0) return best
-
-  // ── Catalog: specific query ──────────────────────────────────────────────
+  // ── Build catalog query (always mood/context specific) ───────────────────
   let specificQuery = "running workout playlist"
   if (mode === "cadence") {
     specificQuery = `running ${params.bpm ?? "160"} bpm workout`
@@ -156,18 +145,45 @@ async function findContent(
     specificQuery = "running workout music playlist"
   }
 
+  const userPlaylists = await getUserPlaylists(token)
+
+  // ── Phase 1: user playlist that matches BOTH fitness AND context ──────────
+  // A playlist must contain fitness keywords AND context keywords to win here.
+  // This prevents a generic "Running Mix" from always beating mood-specific results.
+  let contextBest: SpotifyPlaylist | null = null
+  let contextBestScore = 0
+  for (const pl of userPlaylists) {
+    const text = `${pl.name} ${pl.description ?? ""}`.toLowerCase()
+    const fitnessScore = FITNESS_KEYWORDS.reduce((s, kw) => s + (text.includes(kw) ? 1 : 0), 0)
+    const ctxScore = contextKeywords.reduce((s, kw) => s + (text.includes(kw.toLowerCase()) ? 1 : 0), 0)
+    if (fitnessScore > 0 && ctxScore > 0) {
+      const total = fitnessScore + ctxScore * 2 // context weighted higher
+      if (total > contextBestScore) { contextBestScore = total; contextBest = pl }
+    }
+  }
+  if (contextBest) return contextBest
+
+  // ── Phase 2: mood/context-specific catalog search ─────────────────────────
   const specific = await searchCatalog(token, specificQuery, "playlist")
   if (specific) return specific
 
-  // ── Catalog: generic running fallback ────────────────────────────────────
+  // ── Phase 3: any fitness match from user library ──────────────────────────
+  let fitBest: SpotifyPlaylist | null = null
+  let fitBestScore = 0
+  for (const pl of userPlaylists) {
+    const text = `${pl.name} ${pl.description ?? ""}`.toLowerCase()
+    const score = FITNESS_KEYWORDS.reduce((s, kw) => s + (text.includes(kw) ? 1 : 0), 0)
+    if (score > fitBestScore) { fitBestScore = score; fitBest = pl }
+  }
+  if (fitBest && fitBestScore > 0) return fitBest
+
+  // ── Phase 4: generic running catalog ─────────────────────────────────────
   const generic = await searchCatalog(token, "running workout", "playlist")
   if (generic) return generic
 
-  // ── Last resort: any user playlist ───────────────────────────────────────
-  const anyUserPlaylist = userPlaylists[0] ?? null
-  if (anyUserPlaylist) return anyUserPlaylist
+  // ── Phase 5: any user playlist ───────────────────────────────────────────
+  if (userPlaylists[0]) return userPlaylists[0]
 
-  // ── Absolute last resort: anything ───────────────────────────────────────
   return searchCatalog(token, "workout", "playlist")
 }
 
