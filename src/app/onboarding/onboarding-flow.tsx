@@ -952,6 +952,11 @@ export default function OnboardingFlow() {
   const router = useRouter()
   const [flowStep, setFlowStep] = useState<FlowStep>("mode")
   const [mode, setMode] = useState<string | null>(null)
+  const [bpm, setBpm] = useState(160)
+  const [mood, setMood] = useState("")
+  const [goal, setGoal] = useState<{ type: "time" | "distance"; value: number }>({ type: "time", value: 30 })
+  const [location, setLocation] = useState("")
+  const [content, setContent] = useState<string[]>(["music"])
 
   useEffect(() => {
     const pin = () => {
@@ -963,20 +968,30 @@ export default function OnboardingFlow() {
     return () => window.removeEventListener("scroll", pin)
   }, [])
 
+  function navigateToResult(sharing: "crew" | "solo") {
+    const p = new URLSearchParams()
+    p.set("mode", mode!)
+    p.set("sharing", sharing)
+    p.set("goalType", goal.type)
+    p.set("goalValue", String(goal.value))
+    if (mode === "cadence") p.set("bpm", String(bpm))
+    if (mode === "mood") { p.set("mood", mood); p.set("location", location) }
+    if (mode === "mix") p.set("content", content.join(","))
+    router.push(`/result?${p.toString()}`)
+  }
+
   function handleModeNext(selectedMode: string) {
     setMode(selectedMode)
     if (selectedMode === "cadence") setFlowStep("cadence-bpm")
     else if (selectedMode === "mood") setFlowStep("mood-feeling")
     else if (selectedMode === "mix") setFlowStep("mix-content")
-    else router.push("/dashboard")
   }
-
 
   if (flowStep === "cadence-bpm") {
     return (
       <CadenceBpmStep
         onBack={() => setFlowStep("mode")}
-        onNext={() => setFlowStep("cadence-goal")}
+        onNext={(b) => { setBpm(b); setFlowStep("cadence-goal") }}
       />
     )
   }
@@ -985,7 +1000,7 @@ export default function OnboardingFlow() {
     return (
       <CadenceGoalStep
         onBack={() => setFlowStep("cadence-bpm")}
-        onNext={() => setFlowStep("cadence-sharing")}
+        onNext={(g) => { setGoal(g); setFlowStep("cadence-sharing") }}
       />
     )
   }
@@ -994,7 +1009,7 @@ export default function OnboardingFlow() {
     return (
       <MoodFeelingStep
         onBack={() => setFlowStep("mode")}
-        onNext={() => setFlowStep("mood-goal")}
+        onNext={(m) => { setMood(m); setFlowStep("mood-goal") }}
       />
     )
   }
@@ -1003,7 +1018,7 @@ export default function OnboardingFlow() {
     return (
       <CadenceGoalStep
         onBack={() => setFlowStep("mood-feeling")}
-        onNext={() => setFlowStep("mood-location")}
+        onNext={(g) => { setGoal(g); setFlowStep("mood-location") }}
         step={2}
         total={4}
       />
@@ -1014,7 +1029,7 @@ export default function OnboardingFlow() {
     return (
       <MoodLocationStep
         onBack={() => setFlowStep("mood-goal")}
-        onNext={() => setFlowStep("mood-sharing")}
+        onNext={(l) => { setLocation(l); setFlowStep("mood-sharing") }}
       />
     )
   }
@@ -1023,7 +1038,7 @@ export default function OnboardingFlow() {
     return (
       <MixContentStep
         onBack={() => setFlowStep("mode")}
-        onNext={() => setFlowStep("mix-goal")}
+        onNext={(c) => { setContent(c); setFlowStep("mix-goal") }}
       />
     )
   }
@@ -1032,7 +1047,7 @@ export default function OnboardingFlow() {
     return (
       <CadenceGoalStep
         onBack={() => setFlowStep("mix-content")}
-        onNext={() => setFlowStep("mix-sharing")}
+        onNext={(g) => { setGoal(g); setFlowStep("mix-sharing") }}
         step={2}
         total={3}
       />
@@ -1043,7 +1058,7 @@ export default function OnboardingFlow() {
     return (
       <CadenceSharingStep
         onBack={() => setFlowStep("mix-goal")}
-        onNext={() => router.push("/dashboard")}
+        onNext={navigateToResult}
       />
     )
   }
@@ -1052,7 +1067,7 @@ export default function OnboardingFlow() {
     return (
       <CadenceSharingStep
         onBack={() => setFlowStep("mood-location")}
-        onNext={() => router.push("/dashboard")}
+        onNext={navigateToResult}
       />
     )
   }
@@ -1061,7 +1076,7 @@ export default function OnboardingFlow() {
     return (
       <CadenceSharingStep
         onBack={() => setFlowStep("cadence-goal")}
-        onNext={() => router.push("/dashboard")}
+        onNext={navigateToResult}
       />
     )
   }
