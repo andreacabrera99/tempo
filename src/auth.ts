@@ -12,10 +12,6 @@ const SCOPES = [
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   session: { strategy: "jwt" },
-  pages: {
-    signIn: "/",
-    error: "/",
-  },
   providers: [
     Spotify({
       clientId: process.env.SPOTIFY_CLIENT_ID!,
