@@ -1,5 +1,4 @@
 import { auth, signIn } from "@/auth"
-import { redirect } from "next/navigation"
 
 async function handleSignIn() {
   "use server"
@@ -8,7 +7,6 @@ async function handleSignIn() {
 
 export default async function Home() {
   const session = await auth()
-  if (session) redirect("/onboarding")
 
   return (
     <>
@@ -97,9 +95,15 @@ export default async function Home() {
               your pace, the type of your training.
             </p>
 
-            <a href="/how-it-works#qr" style={{ display: "inline-flex", alignSelf: "flex-start", alignItems: "center", backgroundColor: "#ccff00", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", textDecoration: "none" }}>
-              <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#000" }}>Run Now</span>
-            </a>
+            {session ? (
+              <a href="/onboarding" style={{ display: "inline-flex", alignSelf: "flex-start", alignItems: "center", backgroundColor: "#ccff00", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", textDecoration: "none" }}>
+                <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#000" }}>Find My Playlist →</span>
+              </a>
+            ) : (
+              <a href="/how-it-works#qr" style={{ display: "inline-flex", alignSelf: "flex-start", alignItems: "center", backgroundColor: "#ccff00", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", textDecoration: "none" }}>
+                <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#000" }}>Run Now</span>
+              </a>
+            )}
           </div>
 
           {/* Right: image */}
@@ -215,12 +219,18 @@ export default async function Home() {
             your pace, the type of your training.
           </p>
 
-          <form action={handleSignIn}>
-            <button type="submit" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", backgroundColor: "#1DB954", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", cursor: "pointer" }}>
-              <SpotifyIcon size={18} />
-              <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#fff" }}>Continue with Spotify</span>
-            </button>
-          </form>
+          {session ? (
+            <a href="/onboarding" style={{ display: "inline-flex", alignItems: "center", backgroundColor: "#ccff00", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", textDecoration: "none" }}>
+              <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#000" }}>Find My Playlist →</span>
+            </a>
+          ) : (
+            <form action={handleSignIn}>
+              <button type="submit" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", backgroundColor: "#1DB954", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", cursor: "pointer" }}>
+                <SpotifyIcon size={18} />
+                <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#fff" }}>Continue with Spotify</span>
+              </button>
+            </form>
+          )}
 
           <a
             href="/how-it-works"
