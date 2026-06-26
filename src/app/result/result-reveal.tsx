@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+
 interface SpotifyResult {
   external_urls: { spotify: string }
   name: string
@@ -14,17 +16,31 @@ function BoltIcon() {
   )
 }
 
-// Converts https://open.spotify.com/playlist/ID → spotify:playlist:ID
-// The URI scheme opens the Spotify app and starts playback immediately
 function toSpotifyUri(webUrl: string, type: "playlist" | "show"): string {
   const id = webUrl.split("/").pop()?.split("?")[0] ?? ""
   return `spotify:${type}:${id}`
 }
 
 export default function ResultReveal({ result }: { result: SpotifyResult | null }) {
-  const spotifyUrl = result
+  const [loading, setLoading] = useState(false)
+  const spotifyUri = result
     ? toSpotifyUri(result.external_urls.spotify, result.type)
     : null
+
+  async function handleStart() {
+    if (!spotifyUri) return
+    setLoading(true)
+    try {
+      // Trigger playback via API so Spotify opens to the now-playing screen
+      await fetch("/api/play", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contextUri: spotifyUri }),
+      })
+    } catch {}
+    // Open Spotify — if play API succeeded it shows the player, otherwise opens the playlist
+    window.location.href = spotifyUri
+  }
 
   return (
     <div
@@ -76,11 +92,12 @@ export default function ResultReveal({ result }: { result: SpotifyResult | null 
 
       {/* CTA */}
       <div className="w-full flex flex-col gap-3">
-        {spotifyUrl ? (
-          <a
-            href={spotifyUrl}
-            className="w-full py-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-            style={{ background: "#C8FF00", textDecoration: "none" }}
+        {spotifyUri ? (
+          <button
+            onClick={handleStart}
+            disabled={loading}
+            className="w-full py-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
+            style={{ background: "#C8FF00", border: "none", cursor: "pointer" }}
           >
             <BoltIcon />
             <span
@@ -91,9 +108,9 @@ export default function ResultReveal({ result }: { result: SpotifyResult | null 
                 color: "#0a0a0a",
               }}
             >
-              Start my run
+              {loading ? "Opening Spotify…" : "Start my run"}
             </span>
-          </a>
+          </button>
         ) : (
           <p
             className="text-center"
