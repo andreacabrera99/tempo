@@ -1,8 +1,13 @@
-import { auth, signIn } from "@/auth"
+import { auth, signIn, signOut } from "@/auth"
 
 async function handleSignIn() {
   "use server"
   await signIn("spotify", { redirectTo: "/onboarding" })
+}
+
+async function handleSignOut() {
+  "use server"
+  await signOut({ redirectTo: "/" })
 }
 
 export default async function Home() {
@@ -220,9 +225,16 @@ export default async function Home() {
           </p>
 
           {session ? (
-            <a href="/onboarding" style={{ display: "inline-flex", alignItems: "center", backgroundColor: "#ccff00", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", textDecoration: "none" }}>
-              <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#000" }}>Find My Playlist →</span>
-            </a>
+            <>
+              <a href="/onboarding" style={{ display: "inline-flex", alignItems: "center", backgroundColor: "#ccff00", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", textDecoration: "none" }}>
+                <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#000" }}>Find My Playlist →</span>
+              </a>
+              <form action={handleSignOut} style={{ marginTop: "0.75rem" }}>
+                <button type="submit" style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-geist-sans)", fontSize: "0.8rem", color: "rgba(255,255,255,0.35)", marginLeft: "0.2rem" }}>
+                  Sign out
+                </button>
+              </form>
+            </>
           ) : (
             <form action={handleSignIn}>
               <button type="submit" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", backgroundColor: "#1DB954", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", cursor: "pointer" }}>
