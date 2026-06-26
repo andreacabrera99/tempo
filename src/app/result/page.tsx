@@ -58,18 +58,23 @@ async function searchCatalog(
   return items.find((i) => i.images?.length > 0) ?? null
 }
 
+// Keywords that always get a 3x weight boost — ensures running/fitness playlists rank above everything else
+const FITNESS_KEYWORDS = ["run", "running", "runner", "workout", "gym", "fitness", "exercise", "training", "cardio", "sport", "correr", "entrena"]
+
 function scorePlaylist(playlist: SpotifyPlaylist, keywords: string[]): number {
   const text = `${playlist.name} ${playlist.description ?? ""}`.toLowerCase()
-  return keywords.reduce((s, kw) => s + (text.includes(kw.toLowerCase()) ? 1 : 0), 0)
+  const fitnessScore = FITNESS_KEYWORDS.reduce((s, kw) => s + (text.includes(kw) ? 3 : 0), 0)
+  const moodScore = keywords.reduce((s, kw) => s + (text.includes(kw.toLowerCase()) ? 1 : 0), 0)
+  return fitnessScore + moodScore
 }
 
 const MOOD_KEYWORDS: Record<string, string[]> = {
-  hyped:      ["hype", "pump", "energy", "beast", "fire", "power", "intense", "run", "running"],
-  "locked-in":["focus", "zone", "concentrate", "grind", "locked", "run", "running"],
-  floaty:     ["easy", "light", "morning", "smooth", "flow", "chill", "run", "running"],
-  heavy:      ["heavy", "power", "strength", "grind", "hard", "run", "running"],
-  chill:      ["chill", "relax", "easy", "calm", "recovery", "run", "running"],
-  angry:      ["rage", "metal", "anger", "aggressive", "rock", "run", "running"],
+  hyped:      ["hype", "pump", "energy", "beast", "fire", "power", "intense"],
+  "locked-in":["focus", "zone", "concentrate", "grind", "locked"],
+  floaty:     ["easy", "light", "morning", "smooth", "flow", "chill"],
+  heavy:      ["heavy", "power", "strength", "grind", "hard"],
+  chill:      ["chill", "relax", "easy", "calm", "recovery"],
+  angry:      ["rage", "metal", "anger", "aggressive", "rock"],
 }
 
 const LOCATION_KEYWORDS: Record<string, string[]> = {
@@ -80,12 +85,12 @@ const LOCATION_KEYWORDS: Record<string, string[]> = {
 }
 
 const MOOD_CATALOG_QUERY: Record<string, string> = {
-  hyped:      "hype workout running energy",
-  "locked-in":"focus running concentration",
-  floaty:     "easy run morning chill",
-  heavy:      "power strength grind workout",
-  chill:      "chill easy run recovery",
-  angry:      "rage intense workout rock",
+  hyped:      "hype running workout energy pump",
+  "locked-in":"focus run concentration workout",
+  floaty:     "easy run morning jogging chill",
+  heavy:      "power strength grind running workout",
+  chill:      "chill easy run recovery jogging",
+  angry:      "rage run intense workout rock",
 }
 
 async function findContent(
