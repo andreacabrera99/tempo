@@ -14,8 +14,17 @@ function BoltIcon() {
   )
 }
 
+// Converts https://open.spotify.com/playlist/ID → spotify:playlist:ID
+// The URI scheme opens the Spotify app and starts playback immediately
+function toSpotifyUri(webUrl: string, type: "playlist" | "show"): string {
+  const id = webUrl.split("/").pop()?.split("?")[0] ?? ""
+  return `spotify:${type}:${id}`
+}
+
 export default function ResultReveal({ result }: { result: SpotifyResult | null }) {
-  const spotifyUrl = result?.external_urls?.spotify
+  const spotifyUrl = result
+    ? toSpotifyUri(result.external_urls.spotify, result.type)
+    : null
 
   return (
     <div
