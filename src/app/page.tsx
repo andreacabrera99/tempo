@@ -97,25 +97,9 @@ export default async function Home() {
               your pace, the type of your training.
             </p>
 
-            <form action={handleSignIn}>
-              <button
-                type="submit"
-                className="flex items-center gap-4 rounded-full transition-all hover:scale-105 active:scale-95"
-                style={{ backgroundColor: "#C8FF00", padding: "0.9rem 2rem", width: "fit-content" }}
-              >
-                <span
-                  className="flex items-center justify-center rounded-full shrink-0"
-                  style={{ width: 36, height: 36, backgroundColor: "#000" }}
-                >
-                  <SpotifyIcon size={18} />
-                </span>
-                <span
-                  style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "1.25rem", color: "#000" }}
-                >
-                  Continue with Spotify
-                </span>
-              </button>
-            </form>
+            <a href="/how-it-works#qr" style={{ display: "inline-flex", alignSelf: "flex-start", alignItems: "center", backgroundColor: "#ccff00", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", textDecoration: "none" }}>
+              <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#000" }}>Run Now</span>
+            </a>
           </div>
 
           {/* Right: image */}
@@ -196,7 +180,7 @@ export default async function Home() {
         <main className="relative px-6" style={{ paddingTop: "22rem", paddingBottom: "3rem" }}>
           <p
             className="uppercase mb-0"
-            style={{ fontFamily: "var(--font-barlow)", fontWeight: 700, fontSize: "0.7rem", color: "#C8FF00", letterSpacing: "0.22em" }}
+            style={{ fontFamily: "var(--font-barlow)", fontWeight: 700, fontSize: "0.7rem", color: "#C8FF00", letterSpacing: "0.22em", marginLeft: "0.2rem" }}
           >
             Music Curated for Runners
           </p>
@@ -224,7 +208,7 @@ export default async function Home() {
 
           <p
             className="mt-7 mb-10 leading-relaxed"
-            style={{ fontFamily: "var(--font-geist-mono)", fontWeight: 400, color: "rgba(255,255,255,0.55)", fontSize: "0.82rem" }}
+            style={{ fontFamily: "var(--font-geist-mono)", fontWeight: 400, color: "rgba(255,255,255,0.55)", fontSize: "0.82rem", marginLeft: "0.2rem" }}
           >
             Playlists tuned to your mood,
             <br />
@@ -232,27 +216,18 @@ export default async function Home() {
           </p>
 
           <form action={handleSignIn}>
-            <button
-              type="submit"
-              className="w-full flex items-center gap-4 rounded-full transition-all active:scale-[0.97]"
-              style={{ backgroundColor: "#C8FF00", padding: "1rem 1.5rem" }}
-            >
-              <span
-                className="flex items-center justify-center rounded-full shrink-0"
-                style={{ width: 40, height: 40, backgroundColor: "#000" }}
-              >
-                <SpotifyIcon size={20} />
-              </span>
-              <span
-                className="flex-1 text-center text-black leading-snug"
-                style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "1.35rem" }}
-              >
-                Continue with
-                <br />
-                Spotify
-              </span>
+            <button type="submit" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", backgroundColor: "#1DB954", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", cursor: "pointer" }}>
+              <SpotifyIcon size={18} />
+              <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#fff" }}>Continue with Spotify</span>
             </button>
           </form>
+
+          <a
+            href="/how-it-works"
+            style={{ display: "block", marginTop: "1rem", marginLeft: "1.25rem", fontFamily: "var(--font-geist-sans)", fontSize: "0.85rem", color: "rgba(255,255,255,0.55)", textDecoration: "none" }}
+          >
+            How it works
+          </a>
         </main>
       </div>
     </>

@@ -1,5 +1,6 @@
 import { signIn } from "@/auth"
 import { WaveformBars } from "../waveform-bars"
+import { OverscrollDark } from "./overscroll-dark"
 
 async function handleSignIn() {
   "use server"
@@ -8,6 +9,8 @@ async function handleSignIn() {
 
 export default function HowItWorks() {
   return (
+    <>
+    <OverscrollDark />
     <div className="hidden md:block" style={{ backgroundColor: "#0b0b0f", color: "#fff", minHeight: "100vh" }}>
 
       {/* ── NAV ─────────────────────────────────────────────────── */}
@@ -16,12 +19,9 @@ export default function HowItWorks() {
           <BoltIcon />
           <span style={{ fontFamily: "var(--font-oswald)", fontWeight: 700, fontSize: "1.35rem", color: "#fff", letterSpacing: "0.12em" }}>TEMPO</span>
         </a>
-        <div style={{ display: "flex", alignItems: "center", gap: "2.5rem" }}>
-          <a href="/how-it-works" style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.8rem", color: "rgba(255,255,255,0.55)", textDecoration: "none", letterSpacing: "0.05em" }}>How it works</a>
-          <a href="#qr" style={{ display: "flex", alignItems: "center", backgroundColor: "#ccff00", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", textDecoration: "none" }}>
-            <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#000" }}>Run Now</span>
-          </a>
-        </div>
+        <a href="#qr" style={{ display: "flex", alignItems: "center", backgroundColor: "#ccff00", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", textDecoration: "none" }}>
+          <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#000" }}>Run Now</span>
+        </a>
       </nav>
 
       {/* ── HERO ────────────────────────────────────────────────── */}
@@ -253,6 +253,194 @@ export default function HowItWorks() {
       </section>
 
     </div>
+
+    {/* ── MOBILE ──────────────────────────────────────────────── */}
+    <div className="md:hidden" style={{ backgroundColor: "#0b0b0f", color: "#fff", minHeight: "100vh" }}>
+
+      {/* NAV */}
+      <nav style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1.25rem 1.5rem" }}>
+        <a href="/" style={{ display: "flex", alignItems: "center", gap: "0.5rem", textDecoration: "none" }}>
+          <BoltIcon />
+          <span style={{ fontFamily: "var(--font-oswald)", fontWeight: 700, fontSize: "1.35rem", color: "#fff", letterSpacing: "0.12em" }}>TEMPO</span>
+        </a>
+      </nav>
+
+      {/* HERO */}
+      <section style={{ textAlign: "center", padding: "2rem 1.5rem 2.5rem" }}>
+        <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.65rem", color: "#ccff00", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: "1.5rem" }}>
+          HOW IT WORKS
+        </p>
+        <div style={{ overflow: "hidden" }}>
+          <h1 style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(52px, 17vw, 72px)", lineHeight: 0.9, textTransform: "uppercase", color: "#fff", marginBottom: "2rem", transform: "scaleX(1.15)", transformOrigin: "center center", display: "block" }}>
+            FROM A<br />FEELING<br />TO A RUN<br />MIX
+          </h1>
+        </div>
+        <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.78rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: "2rem" }}>
+          Tell TEMPO your mood or the cadence you want — it builds the perfect mix for you.
+        </p>
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <WaveformBars height={28} />
+        </div>
+      </section>
+
+      {/* STEPS */}
+      <section style={{ padding: "0 0.75rem 3rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+        {[
+          { n: "01", title: "Connect Spotify", desc: "One tap with OAuth. We read your library and listening taste.", active: false },
+          { n: "02", title: "Set mood or cadence", desc: "How do you feel? How far? or What cadence do you want to run? Just a few questions so we can set everything up.", active: false },
+          { n: "03", title: "We curate the mix", desc: "The engine blends your tracks and podcasts to match your mood — or to hit the exact BPM you picked.", active: false },
+          { n: "04", title: "Run to the beat", desc: "Every track fits the session you set up.", active: true },
+        ].map((s) => (
+          <div key={s.n} style={{ backgroundColor: "#131318", borderRadius: 16, padding: "1.25rem 1.5rem", display: "flex", gap: "1.25rem", border: s.active ? "1px solid rgba(204,255,0,0.18)" : "1px solid rgba(255,255,255,0.04)" }}>
+            <span style={{ fontFamily: "var(--font-oswald)", fontWeight: 700, fontSize: "2rem", color: s.active ? "rgba(204,255,0,0.25)" : "rgba(255,255,255,0.07)", lineHeight: 1, flexShrink: 0, minWidth: "2.5rem" }}>{s.n}</span>
+            <div>
+              <h3 style={{ fontFamily: "var(--font-barlow-condensed)", fontWeight: 700, fontSize: "1.1rem", color: "#fff", marginBottom: "0.4rem", lineHeight: 1.2 }}>{s.title}</h3>
+              <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.7rem", color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>{s.desc}</p>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <hr style={{ border: "none", borderTop: "1px solid rgba(255,255,255,0.08)", margin: "0 1.5rem 3.5rem" }} />
+
+      {/* FEATURE 1 — SET YOUR CADENCE */}
+      <section style={{ padding: "0 1.5rem 3.5rem" }}>
+        <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.65rem", color: "#ccff00", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+          <span>①</span> SET YOUR CADENCE
+        </p>
+        <h2 style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(32px, 10vw, 44px)", color: "#fff", lineHeight: 1.05, marginBottom: "1rem" }}>
+          You pick the pace,<br />we find the beat
+        </h2>
+        <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.75rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: "1.5rem" }}>
+          Dial in the cadence you want to run — your target steps-per-minute — and TEMPO pulls tracks whose BPM lands right on it.
+        </p>
+        <div style={{ backgroundColor: "#131318", borderRadius: 16, padding: "1.5rem", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.6rem", color: "rgba(255,255,255,0.35)", letterSpacing: "0.15em", textTransform: "uppercase" }}>TARGET CADENCE</span>
+            <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.6rem", color: "#ccff00", letterSpacing: "0.1em", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+              FINDING <span style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: "#ccff00", display: "inline-block" }} />
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "1.25rem" }}>
+            <span style={{ fontFamily: "var(--font-oswald)", fontWeight: 700, fontSize: "4.5rem", color: "#fff", lineHeight: 1 }}>168</span>
+            <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.6rem", color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em" }}>SPM ↔ BPM</span>
+          </div>
+          <div style={{ position: "relative", marginBottom: "0.5rem" }}>
+            <div style={{ height: 4, borderRadius: 999, background: "linear-gradient(to right, #3b82f6 0%, #8b5cf6 40%, #ccff00 75%, #e5e7eb 100%)" }} />
+            <div style={{ position: "absolute", left: "75%", top: "50%", transform: "translate(-50%, -50%)", width: 14, height: 14, borderRadius: "50%", backgroundColor: "#ccff00", border: "2px solid #131318", boxShadow: "0 0 0 2px #ccff00" }} />
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.58rem", color: "rgba(255,255,255,0.3)" }}>100 · jog</span>
+            <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.58rem", color: "#ccff00" }}>168 · tempo</span>
+            <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.58rem", color: "rgba(255,255,255,0.3)" }}>190 · sprint</span>
+          </div>
+        </div>
+      </section>
+
+      <hr style={{ border: "none", borderTop: "1px solid rgba(255,255,255,0.08)", margin: "0 1.5rem 3.5rem" }} />
+
+      {/* FEATURE 2 — MOOD CURATION */}
+      <section style={{ padding: "0 1.5rem 3.5rem" }}>
+        <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.65rem", color: "#ccff00", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+          <span>②</span> MOOD CURATION
+        </p>
+        <h2 style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(32px, 10vw, 44px)", color: "#fff", lineHeight: 1.05, marginBottom: "1rem" }}>
+          Playlists that read<br />the room
+        </h2>
+        <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.75rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: "1.5rem" }}>
+          Pick how you feel, where you're running and how hard. TEMPO curates from your own library — never the same generic gym playlist.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+          {[
+            { label: "HYPED", sub: "max energy", bg: "#ccff00", color: "#000" },
+            { label: "LOCKED IN", sub: "deep focus", bg: "#1a1a20", color: "#fff" },
+            { label: "FLOATY", sub: "easy & light", bg: "#1a1a20", color: "#fff" },
+            { label: "ANGRY", sub: "rage run", bg: "#ff2d8a", color: "#fff" },
+          ].map((m) => (
+            <div key={m.label} style={{ backgroundColor: m.bg, borderRadius: 14, padding: "1.25rem", display: "flex", flexDirection: "column", gap: "0.3rem", aspectRatio: "1" }}>
+              <span style={{ fontFamily: "var(--font-oswald)", fontWeight: 700, fontSize: "1.3rem", color: m.color, letterSpacing: "0.03em" }}>{m.label}</span>
+              <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.62rem", color: m.color === "#000" ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.5)" }}>{m.sub}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <hr style={{ border: "none", borderTop: "1px solid rgba(255,255,255,0.08)", margin: "0 1.5rem 3.5rem" }} />
+
+      {/* FEATURE 3 — SMART AUDIO MIX */}
+      <section style={{ padding: "0 1.5rem 3.5rem" }}>
+        <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.65rem", color: "#ccff00", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+          <span>③</span> SMART AUDIO MIX
+        </p>
+        <h2 style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(32px, 10vw, 44px)", color: "#fff", lineHeight: 1.05, marginBottom: "1rem" }}>
+          Music, podcasts &<br />coaching, blended
+        </h2>
+        <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.75rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.75 }}>
+          TEMPO weaves spoken audio and coaching cues between tracks based on your run's length and intensity.
+        </p>
+      </section>
+
+      <hr style={{ border: "none", borderTop: "1px solid rgba(255,255,255,0.08)", margin: "0 1.5rem 3.5rem" }} />
+
+      {/* FEATURE 4 — COMMUNITY */}
+      <section style={{ padding: "0 1.5rem 3.5rem" }}>
+        <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.65rem", color: "#ccff00", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+          <span>④</span> COMMUNITY
+        </p>
+        <h2 style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(32px, 10vw, 44px)", color: "#fff", lineHeight: 1.05, marginBottom: "1rem" }}>
+          Run to the same<br />beat as your crew
+        </h2>
+        <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.75rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: "1.5rem" }}>
+          Join a shared session and hear what other runners in your zone — or your friends — are running to right now.
+        </p>
+        <div style={{ display: "flex", alignItems: "center", marginBottom: "1rem" }}>
+          <div style={{ display: "flex" }}>
+            {["#2a2a30","#333340","#2a2a30"].map((c, i) => (
+              <div key={i} style={{ width: 32, height: 32, borderRadius: "50%", backgroundColor: c, border: "2px solid #0b0b0f", marginLeft: i > 0 ? -10 : 0 }} />
+            ))}
+            <div style={{ width: 32, height: 32, borderRadius: "50%", backgroundColor: "#ccff00", border: "2px solid #0b0b0f", marginLeft: -10, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontFamily: "var(--font-geist-mono)", fontWeight: 700, fontSize: "0.58rem", color: "#000" }}>+9</span>
+            </div>
+          </div>
+        </div>
+        <div style={{ backgroundColor: "#131318", borderRadius: 12, padding: "1rem 1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid rgba(255,255,255,0.04)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#ccff00", flexShrink: 0 }} />
+            <div>
+              <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.78rem", fontWeight: 700, color: "#fff" }}>East Side Night Run</div>
+              <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.62rem", color: "rgba(255,255,255,0.35)" }}>12 runners live · 168 BPM</div>
+            </div>
+          </div>
+          <button style={{ backgroundColor: "#ccff00", color: "#000", fontFamily: "var(--font-geist-mono)", fontWeight: 700, fontSize: "0.72rem", border: "none", borderRadius: 999, padding: "0.4rem 1rem", cursor: "pointer" }}>Join</button>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section style={{ padding: "0 1.5rem 3rem" }}>
+        <div style={{ backgroundColor: "#ccff00", borderRadius: 20, padding: "3rem 1.5rem", textAlign: "center" }}>
+          <BoltIconDark />
+          <h2 style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(40px, 13vw, 58px)", color: "#000", textTransform: "uppercase", lineHeight: 0.92, margin: "1rem 0 2rem", transform: "scaleX(1.1)", transformOrigin: "center center", display: "block" }}>
+            READY<br />TO RUN<br />ON<br />TEMPO?
+          </h2>
+          <form action={handleSignIn}>
+            <button type="submit" style={{ display: "inline-flex", alignItems: "center", gap: "0.6rem", backgroundColor: "#0b0b0f", border: "none", borderRadius: 999, padding: "0.75rem 1.75rem", cursor: "pointer" }}>
+              <span style={{ width: 22, height: 22, borderRadius: "50%", backgroundColor: "#ccff00", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <SpotifyIconDark size={12} />
+              </span>
+              <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#ccff00" }}>Continue with Spotify</span>
+            </button>
+          </form>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", padding: "1.5rem 1.5rem 3rem" }}>
+        <BoltIcon />
+        <span style={{ fontFamily: "var(--font-oswald)", fontWeight: 700, fontSize: "1.1rem", color: "#fff", letterSpacing: "0.15em" }}>TEMPO</span>
+      </footer>
+
+    </div>
+    </>
   )
 }
 
@@ -322,6 +510,16 @@ function SpotifyIconDark({ size = 11 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="black">
       <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+    </svg>
+  )
+}
+
+function HamburgerIcon() {
+  return (
+    <svg width="22" height="16" viewBox="0 0 22 16" fill="none">
+      <rect width="22" height="2" rx="1" fill="rgba(255,255,255,0.7)" />
+      <rect y="7" width="22" height="2" rx="1" fill="rgba(255,255,255,0.7)" />
+      <rect y="14" width="22" height="2" rx="1" fill="rgba(255,255,255,0.7)" />
     </svg>
   )
 }
