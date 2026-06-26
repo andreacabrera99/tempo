@@ -55,7 +55,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      style={{ backgroundColor: "#54759c" }}
+      style={{ backgroundColor: "#0a0a0a" }}
       className={`${geistSans.variable} ${geistMono.variable} ${barlowCondensed.variable} ${barlow.variable} ${oswald.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
