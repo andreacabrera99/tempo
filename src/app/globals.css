@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+@keyframes waveform-bar {
+  0%   { height: 3px; }
+  100% { height: var(--bar-max, 20px); }
+}
+
+.waveform-bar {
+  width: 5px;
+  border-radius: 3px;
+  animation: waveform-bar var(--bar-dur, 0.8s) ease-in-out infinite alternate;
+  animation-delay: var(--bar-delay, 0s);
+  min-height: 3px;
+}
+
 :root {
   --background: #0a0a0a;
   --foreground: #ededed;
@@ -13,7 +26,9 @@
 }
 
 html, body {
-  background: #0a0a0a;
+  margin: 0;
+  padding: 0;
+  background-color: #54759c;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }

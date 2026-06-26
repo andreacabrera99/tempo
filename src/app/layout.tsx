@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Barlow_Condensed, Barlow, Oswald } from "next/font/google";
+import { OverscrollColors } from "./overscroll-colors";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,7 +32,7 @@ const oswald = Oswald({
 });
 
 export const metadata: Metadata = {
-  title: "Tempo — Run to Your Rhythm",
+  title: "Tempo | Run to Your Rhythm",
   description: "Music that adapts to your pace, mood, and training style.",
   other: {
     "apple-mobile-web-app-capable": "yes",
@@ -54,9 +55,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      style={{ backgroundColor: "#54759c" }}
       className={`${geistSans.variable} ${geistMono.variable} ${barlowCondensed.variable} ${barlow.variable} ${oswald.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <OverscrollColors />
+        {children}
+      </body>
     </html>
   );
 }

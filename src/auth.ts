@@ -5,18 +5,21 @@ const SCOPES = [
   "user-read-email",
   "user-read-private",
   "playlist-read-private",
-  "streaming",
-  "user-modify-playback-state",
   "user-read-playback-state",
   "user-top-read",
 ].join(" ")
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   providers: [
     Spotify({
       clientId: process.env.SPOTIFY_CLIENT_ID!,
       clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
-      authorization: `https://accounts.spotify.com/authorize?scope=${encodeURIComponent(SCOPES)}`,
+      authorization: {
+        url: "https://accounts.spotify.com/authorize",
+        params: { scope: SCOPES },
+      },
+      checks: ["state"],
     }),
   ],
   callbacks: {
