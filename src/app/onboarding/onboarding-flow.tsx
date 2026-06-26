@@ -787,7 +787,7 @@ function CadenceSharingStep({
             fontSize: "1.15rem",
           }}
         >
-          Start my run
+          Build my run
         </span>
       </button>
     </div>
