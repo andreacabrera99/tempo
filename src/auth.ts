@@ -31,7 +31,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           ...token,
           accessToken: account.access_token ?? "",
           refreshToken: account.refresh_token ?? "",
-          expiresAt: (account.expires_at ?? 0) * 1000, // store as ms
+          expiresAt: (account.expires_at ?? 0) * 1000,
+          scope: account.scope ?? "",
         }
       }
 
@@ -67,6 +68,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     async session({ session, token }) {
       session.accessToken = token.accessToken as string
+      session.scope = token.scope as string
       return session
     },
   },

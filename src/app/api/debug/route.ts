@@ -17,7 +17,7 @@ export async function GET() {
   const meData = meRes.ok ? await meRes.json() : await meRes.text()
   if (meRes.ok) {
     results.userId = meData.id
-    results.scopes = (session as unknown as Record<string, unknown>).scope ?? "not in session"
+    results.scopes = (session as unknown as { scope?: string }).scope ?? "not in session"
   } else {
     results.meError = meData
   }
