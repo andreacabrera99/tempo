@@ -18,10 +18,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Spotify({
       clientId: process.env.SPOTIFY_CLIENT_ID!,
       clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
-      authorization: {
-        url: "https://accounts.spotify.com/authorize",
-        params: { scope: SCOPES, show_dialog: true },
-      },
+      authorization: `https://accounts.spotify.com/authorize?scope=${encodeURIComponent(SCOPES)}&show_dialog=true`,
       checks: ["state"],
     }),
   ],
