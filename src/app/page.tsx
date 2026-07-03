@@ -106,7 +106,7 @@ export default async function Home() {
               </a>
             ) : (
               <a href="/how-it-works#qr" style={{ display: "inline-flex", alignSelf: "flex-start", alignItems: "center", backgroundColor: "#ccff00", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", textDecoration: "none" }}>
-                <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#000" }}>Run Now</span>
+                <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#000" }}>Run now</span>
               </a>
             )}
           </div>
@@ -169,7 +169,7 @@ export default async function Home() {
             style={{
               position: "absolute",
               inset: 0,
-              background: "linear-gradient(to bottom, #54759c 0%, rgba(84,117,156,0) 18%, rgba(0,0,0,0.00) 30%, rgba(0,0,0,0.88) 91%, rgba(0,0,0,1.00) 100%)",
+              background: "linear-gradient(to bottom, #54759c 0%, rgba(84,117,156,0) 15%, rgba(0,0,0,0.00) 22%, rgba(0,0,0,0.92) 48%, rgba(0,0,0,1.00) 58%)",
             }}
           />
         </div>

@@ -9,6 +9,7 @@ export function OverscrollColors() {
   useEffect(() => {
     const sky = "#54759c"
     const dark = "#0a0a0a"
+    const isDesktop = window.matchMedia("(min-width: 768px)")
 
     if (!isHome) {
       document.documentElement.style.backgroundColor = dark
@@ -17,15 +18,18 @@ export function OverscrollColors() {
     }
 
     const update = () => {
-      const atBottom =
-        window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 20
-      document.documentElement.style.backgroundColor = atBottom ? dark : sky
-      document.body.style.backgroundColor = atBottom ? dark : sky
+      const dim = isDesktop.matches || window.scrollY > 10
+      document.documentElement.style.backgroundColor = dim ? dark : sky
+      document.body.style.backgroundColor = dim ? dark : sky
     }
 
     update()
     window.addEventListener("scroll", update, { passive: true })
-    return () => window.removeEventListener("scroll", update)
+    isDesktop.addEventListener("change", update)
+    return () => {
+      window.removeEventListener("scroll", update)
+      isDesktop.removeEventListener("change", update)
+    }
   }, [isHome])
 
   return null

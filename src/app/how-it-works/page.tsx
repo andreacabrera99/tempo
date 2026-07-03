@@ -1,13 +1,20 @@
+import QRCode from "qrcode"
 import { signIn } from "@/auth"
 import { WaveformBars } from "../waveform-bars"
 import { OverscrollDark } from "./overscroll-dark"
+
+const APP_URL = "https://tempo-one-jet.vercel.app"
 
 async function handleSignIn() {
   "use server"
   await signIn("spotify", { redirectTo: "/dashboard" })
 }
 
-export default function HowItWorks() {
+export default async function HowItWorks() {
+  const qrSvg = (await QRCode.toString(APP_URL, { type: "svg", margin: 0, color: { dark: "#000000", light: "#ffffff" } })).replace(
+    "<svg ",
+    '<svg width="100%" height="100%" preserveAspectRatio="xMidYMid meet" '
+  )
   return (
     <>
     <OverscrollDark />
@@ -20,7 +27,7 @@ export default function HowItWorks() {
           <span style={{ fontFamily: "var(--font-oswald)", fontWeight: 700, fontSize: "1.35rem", color: "#fff", letterSpacing: "0.12em" }}>TEMPO</span>
         </a>
         <a href="#qr" style={{ display: "flex", alignItems: "center", backgroundColor: "#ccff00", border: "none", borderRadius: "999px", padding: "0.6rem 1.25rem", textDecoration: "none" }}>
-          <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#000" }}>Run Now</span>
+          <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "0.9rem", color: "#000" }}>Run now</span>
         </a>
       </nav>
 
@@ -187,7 +194,7 @@ export default function HowItWorks() {
       </section>
 
       {/* ── SECTION 5 — TEMPO IN YOUR POCKET ───────────────────── */}
-      <section id="qr" style={{ padding: "0 3rem 8rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4rem", alignItems: "center" }}>
+      <section id="qr" style={{ padding: "0 3rem 8rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4rem", alignItems: "center", scrollMarginTop: "8rem" }}>
         {/* Left */}
         <div style={{ paddingLeft: "4rem" }}>
           <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.68rem", color: "#ccff00", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "1.25rem" }}>
@@ -201,13 +208,13 @@ export default function HowItWorks() {
           </p>
           {/* QR code area */}
           <div style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>
-            <div style={{ width: 72, height: 72, backgroundColor: "#fff", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <QRIcon />
-            </div>
             <div>
               <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.68rem", color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>Point your camera<br />at the code →</p>
-              <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.68rem", color: "#ccff00" }}>tempo.run/go</p>
             </div>
+            <div
+              style={{ width: 72, height: 72, backgroundColor: "#fff", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", padding: 6 }}
+              dangerouslySetInnerHTML={{ __html: qrSvg }}
+            />
           </div>
         </div>
         {/* Right — Phone mockup with landing page image */}
@@ -526,27 +533,3 @@ function HamburgerIcon() {
   )
 }
 
-function QRIcon() {
-  return (
-    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-      <rect x="2" y="2" width="18" height="18" rx="2" fill="#000" />
-      <rect x="5" y="5" width="12" height="12" rx="1" fill="#fff" />
-      <rect x="7" y="7" width="8" height="8" fill="#000" />
-      <rect x="28" y="2" width="18" height="18" rx="2" fill="#000" />
-      <rect x="31" y="5" width="12" height="12" rx="1" fill="#fff" />
-      <rect x="33" y="7" width="8" height="8" fill="#000" />
-      <rect x="2" y="28" width="18" height="18" rx="2" fill="#000" />
-      <rect x="5" y="31" width="12" height="12" rx="1" fill="#fff" />
-      <rect x="7" y="33" width="8" height="8" fill="#000" />
-      <rect x="28" y="28" width="4" height="4" fill="#000" />
-      <rect x="34" y="28" width="4" height="4" fill="#000" />
-      <rect x="40" y="28" width="6" height="4" fill="#000" />
-      <rect x="28" y="34" width="6" height="4" fill="#000" />
-      <rect x="36" y="34" width="4" height="4" fill="#000" />
-      <rect x="42" y="34" width="4" height="4" fill="#000" />
-      <rect x="28" y="40" width="4" height="6" fill="#000" />
-      <rect x="34" y="40" width="4" height="6" fill="#000" />
-      <rect x="40" y="40" width="6" height="6" fill="#000" />
-    </svg>
-  )
-}
