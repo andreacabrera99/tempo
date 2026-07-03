@@ -944,9 +944,101 @@ function CadenceGoalStep({
   )
 }
 
+// ── Mix step 2: podcast topic picker ─────────────────────────────────────────
+
+const PODCAST_TOPICS = [
+  { id: "true-crime",  label: "True crime",          description: "mystery, investigation & suspense" },
+  { id: "news",        label: "News",                description: "daily news & current events" },
+  { id: "comedy",      label: "Comedy",              description: "laughs for the long miles" },
+  { id: "health",      label: "Health & nutrition",  description: "body, food & performance" },
+  { id: "growth",      label: "Personal growth",     description: "mindset, habits & motivation" },
+]
+
+function MixPodcastTopicStep({
+  onBack,
+  onNext,
+  step = 2,
+  total = 4,
+}: {
+  onBack: () => void
+  onNext: (topic: string) => void
+  step?: number
+  total?: number
+}) {
+  const [selected, setSelected] = useState("true-crime")
+
+  return (
+    <div
+      className="min-h-screen flex flex-col px-5 pb-10"
+      style={{ background: "#0a0a0a", paddingTop: "calc(env(safe-area-inset-top) + 2rem)" }}
+    >
+      <StepHeader onBack={onBack} step={step} total={total} />
+
+      <h1
+        className="text-white leading-[0.92] mb-8"
+        style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(48px, 15vw, 72px)" }}
+      >
+        What kind of podcast?
+      </h1>
+
+      <div className="flex flex-col gap-3 flex-1">
+        {PODCAST_TOPICS.map((opt) => {
+          const isSelected = selected === opt.id
+          return (
+            <button
+              key={opt.id}
+              onClick={() => setSelected(opt.id)}
+              className="flex items-center gap-4 rounded-2xl px-4 py-5 text-left transition-all active:scale-[0.98]"
+              style={{
+                background: "#111111",
+                border: isSelected ? "2px solid #C8FF00" : "2px solid transparent",
+              }}
+            >
+              <div className="flex-1 min-w-0">
+                <div
+                  className="leading-tight text-white"
+                  style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "1.15rem" }}
+                >
+                  {opt.label}
+                </div>
+                <div
+                  className="text-xs mt-0.5 leading-snug"
+                  style={{ fontFamily: "var(--font-geist-mono)", color: "rgba(255,255,255,0.4)" }}
+                >
+                  {opt.description}
+                </div>
+              </div>
+              <div
+                className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
+                style={{
+                  background: isSelected ? "#C8FF00" : "transparent",
+                  border: isSelected ? "none" : "2px solid rgba(255,255,255,0.2)",
+                }}
+              >
+                {isSelected && <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#0a0a0a" }} />}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      <button
+        onClick={() => onNext(selected)}
+        className="mt-8 w-full py-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+        style={{ background: "#C8FF00", color: "#0a0a0a" }}
+      >
+        <BoltIcon color="#0a0a0a" size={16} />
+        <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "1.15rem" }}>
+          Next →
+        </span>
+      </button>
+    </div>
+  )
+}
+
 // ── Root orchestrator ────────────────────────────────────────────────────────
 
-type FlowStep = "mode" | "cadence-bpm" | "cadence-goal" | "cadence-sharing" | "mood-feeling" | "mood-goal" | "mood-location" | "mood-sharing" | "mix-content" | "mix-goal" | "mix-sharing"
+type FlowStep = "mode" | "cadence-bpm" | "cadence-goal" | "cadence-sharing" | "mood-feeling" | "mood-goal" | "mood-location" | "mood-sharing" | "mix-content" | "mix-podcast-topic" | "mix-goal" | "mix-sharing"
 
 export default function OnboardingFlow() {
   const router = useRouter()
@@ -957,6 +1049,7 @@ export default function OnboardingFlow() {
   const [goal, setGoal] = useState<{ type: "time" | "distance"; value: number }>({ type: "time", value: 30 })
   const [location, setLocation] = useState("")
   const [content, setContent] = useState<string[]>(["music"])
+  const [podcastTopic, setPodcastTopic] = useState("true-crime")
 
   useEffect(() => {
     const pin = () => {
@@ -976,7 +1069,10 @@ export default function OnboardingFlow() {
     p.set("goalValue", String(goal.value))
     if (mode === "cadence") p.set("bpm", String(bpm))
     if (mode === "mood") { p.set("mood", mood); p.set("location", location) }
-    if (mode === "mix") p.set("content", content.join(","))
+    if (mode === "mix") {
+      p.set("content", content.join(","))
+      if (content.includes("podcasts")) p.set("podcastTopic", podcastTopic)
+    }
     router.push(`/result?${p.toString()}`)
   }
 
@@ -1038,18 +1134,33 @@ export default function OnboardingFlow() {
     return (
       <MixContentStep
         onBack={() => setFlowStep("mode")}
-        onNext={(c) => { setContent(c); setFlowStep("mix-goal") }}
+        onNext={(c) => {
+          setContent(c)
+          setFlowStep(c.includes("podcasts") ? "mix-podcast-topic" : "mix-goal")
+        }}
+      />
+    )
+  }
+
+  if (flowStep === "mix-podcast-topic") {
+    return (
+      <MixPodcastTopicStep
+        onBack={() => setFlowStep("mix-content")}
+        onNext={(t) => { setPodcastTopic(t); setFlowStep("mix-goal") }}
+        step={2}
+        total={4}
       />
     )
   }
 
   if (flowStep === "mix-goal") {
+    const hasPodcasts = content.includes("podcasts")
     return (
       <CadenceGoalStep
-        onBack={() => setFlowStep("mix-content")}
+        onBack={() => setFlowStep(hasPodcasts ? "mix-podcast-topic" : "mix-content")}
         onNext={(g) => { setGoal(g); setFlowStep("mix-sharing") }}
-        step={2}
-        total={3}
+        step={hasPodcasts ? 3 : 2}
+        total={hasPodcasts ? 4 : 3}
       />
     )
   }

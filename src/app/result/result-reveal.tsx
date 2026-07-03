@@ -6,6 +6,7 @@ interface SpotifyResult {
   external_urls: { spotify: string }
   name: string
   type: "playlist" | "show"
+  tracks?: { total: number }
 }
 
 function BoltIcon() {
@@ -21,7 +22,7 @@ function toSpotifyUri(webUrl: string, type: "playlist" | "show"): string {
   return `spotify:${type}:${id}`
 }
 
-export default function ResultReveal({ result }: { result: SpotifyResult | null }) {
+export default function ResultReveal({ result, sharing = "solo" }: { result: SpotifyResult | null; sharing?: "solo" | "crew" }) {
   const [loading, setLoading] = useState(false)
   const spotifyUri = result
     ? toSpotifyUri(result.external_urls.spotify, result.type)
@@ -77,40 +78,69 @@ export default function ResultReveal({ result }: { result: SpotifyResult | null 
         </h1>
 
         {result?.name && (
-          <p
-            style={{
-              fontFamily: "var(--font-geist-mono)",
-              fontSize: "0.78rem",
-              letterSpacing: "0.12em",
-              color: "rgba(255,255,255,0.4)",
-            }}
-          >
-            {result.name}
-          </p>
+          <div className="flex flex-col items-center gap-1">
+            <p
+              style={{
+                fontFamily: "var(--font-geist-mono)",
+                fontSize: "0.78rem",
+                letterSpacing: "0.12em",
+                color: "rgba(255,255,255,0.4)",
+              }}
+            >
+              {result.name}
+            </p>
+            {result.tracks?.total != null && (
+              <p
+                style={{
+                  fontFamily: "var(--font-geist-mono)",
+                  fontSize: "0.72rem",
+                  letterSpacing: "0.08em",
+                  color: "rgba(255,255,255,0.22)",
+                }}
+              >
+                ~{Math.round(result.tracks.total * 4)} min · {result.tracks.total} songs
+              </p>
+            )}
+          </div>
         )}
       </div>
 
       {/* CTA */}
       <div className="w-full flex flex-col gap-3">
         {spotifyUri ? (
-          <button
-            onClick={handleStart}
-            disabled={loading}
-            className="w-full py-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
-            style={{ background: "#C8FF00", border: "none", cursor: "pointer" }}
-          >
-            <BoltIcon />
-            <span
-              style={{
-                fontFamily: "var(--font-barlow)",
-                fontWeight: 900,
-                fontSize: "1.15rem",
-                color: "#0a0a0a",
-              }}
+          <>
+            <button
+              onClick={handleStart}
+              disabled={loading}
+              className="w-full py-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
+              style={{ background: "#C8FF00", border: "none", cursor: "pointer" }}
             >
-              {loading ? "Opening Spotify…" : "Start my run"}
-            </span>
-          </button>
+              <BoltIcon />
+              <span
+                style={{
+                  fontFamily: "var(--font-barlow)",
+                  fontWeight: 900,
+                  fontSize: "1.15rem",
+                  color: "#0a0a0a",
+                }}
+              >
+                {loading ? "Opening Spotify…" : sharing === "crew" ? "Start the Jam" : "Start my run"}
+              </span>
+            </button>
+            {sharing === "crew" && (
+              <p
+                className="text-center"
+                style={{
+                  fontFamily: "var(--font-geist-mono)",
+                  fontSize: "0.72rem",
+                  letterSpacing: "0.08em",
+                  color: "rgba(255,255,255,0.35)",
+                }}
+              >
+                In Spotify: tap ··· → Start a Jam to invite your crew
+              </p>
+            )}
+          </>
         ) : (
           <p
             className="text-center"
