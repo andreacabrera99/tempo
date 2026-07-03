@@ -11,7 +11,10 @@ export async function GET(req: NextRequest) {
 
   // Read raw JWT to see actual scopes stored at login time
   const rawJwt = await getToken({ req, secret: process.env.AUTH_SECRET })
-  results.jwtScope = rawJwt?.scope ?? "not saved in jwt"
+  results.jwtScope = rawJwt?.scope || "not saved in jwt"
+  results.jwtExpiresAt = rawJwt?.expiresAt ?? null
+  results.accessTokenPrefix = token ? token.substring(0, 8) + "..." : "missing"
+  results.accountScopeRaw = rawJwt ? Object.keys(rawJwt).join(",") : "no jwt"
 
   // Test 1: get user
   const meRes = await fetch("https://api.spotify.com/v1/me", {
