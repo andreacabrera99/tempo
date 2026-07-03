@@ -42,7 +42,10 @@ async function getUserId(token: string): Promise<string | null> {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   })
-  if (!res.ok) return null
+  if (!res.ok) {
+    console.error("[tempo] getUserId failed", res.status, await res.text())
+    return null
+  }
   const data = await res.json()
   return data.id ?? null
 }
@@ -52,7 +55,10 @@ async function searchTracks(token: string, query: string): Promise<string[]> {
     `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=30`,
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
   )
-  if (!res.ok) return []
+  if (!res.ok) {
+    console.error("[tempo] searchTracks failed", res.status, await res.text())
+    return []
+  }
   const data = await res.json()
   return (data.tracks?.items ?? []).map((t: { uri: string }) => t.uri).filter(Boolean)
 }
@@ -68,7 +74,10 @@ async function createPlaylist(
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ name, description, public: false }),
   })
-  if (!res.ok) return null
+  if (!res.ok) {
+    console.error("[tempo] createPlaylist failed", res.status, await res.text())
+    return null
+  }
   const data = await res.json()
   return { ...data, type: "playlist" as const }
 }
