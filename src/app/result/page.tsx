@@ -4,145 +4,146 @@ import ResultReveal from "./result-reveal"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+type SpotifyImage = { url: string; height: number | null; width: number | null }
+
 type SpotifyPlaylist = {
   id: string
   name: string
   description: string
-  images: { url: string; height: number | null; width: number | null }[]
+  images: SpotifyImage[]
   external_urls: { spotify: string }
   tracks: { total: number }
   owner: { display_name: string }
   type: "playlist"
 }
 
-// ── Queries ───────────────────────────────────────────────────────────────────
-
-const MOOD_QUERY: Record<string, string> = {
-  hyped:       "rap trap hype workout pump",
-  "locked-in": "lo-fi focus deep concentration study",
-  floaty:      "indie ambient morning easy chill",
-  heavy:       "metal heavy gym power lifting",
-  chill:       "jazz lounge easy recovery soft",
-  angry:       "hardcore metal rage aggressive punk",
+type SpotifyShow = {
+  id: string
+  name: string
+  description: string
+  images: SpotifyImage[]
+  external_urls: { spotify: string }
+  publisher: string
+  total_episodes: number
+  type: "show"
 }
 
-const MOOD_LABEL: Record<string, string> = {
-  hyped:       "Hyped",
-  "locked-in": "Locked In",
-  floaty:      "Floaty",
-  heavy:       "Heavy",
-  chill:       "Chill",
-  angry:       "Angry",
-}
+type SpotifyResult = SpotifyPlaylist | SpotifyShow
 
 // ── Spotify helpers ──────────────────────────────────────────────────────────
 
-async function getUserId(token: string): Promise<string | null> {
-  const res = await fetch("https://api.spotify.com/v1/me", {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  })
-  if (!res.ok) {
-    console.error("[tempo] getUserId failed", res.status, await res.text())
-    return null
-  }
-  const data = await res.json()
-  return data.id ?? null
-}
-
-async function searchTracks(token: string, query: string): Promise<string[]> {
+async function searchCatalog(
+  token: string,
+  query: string,
+  type: "playlist" | "show",
+  pickIndex = 0
+): Promise<SpotifyResult | null> {
   const res = await fetch(
-    `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=30`,
+    `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=20`,
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
   )
-  if (!res.ok) {
-    console.error("[tempo] searchTracks failed", res.status, await res.text())
-    return []
-  }
+  if (!res.ok) return null
   const data = await res.json()
-  return (data.tracks?.items ?? []).map((t: { uri: string }) => t.uri).filter(Boolean)
+  const items: SpotifyResult[] = type === "playlist"
+    ? (data.playlists?.items ?? []).filter(Boolean).map((p: SpotifyPlaylist) => ({ ...p, type: "playlist" as const }))
+    : (data.shows?.items ?? []).filter(Boolean).map((s: SpotifyShow) => ({ ...s, type: "show" as const }))
+  const withImage = items.filter((i) => i.images?.length > 0)
+  const pool = withImage.length > 0 ? withImage : items
+  return pool[pickIndex % pool.length] ?? null
 }
 
-async function createPlaylist(
-  token: string,
-  userId: string,
-  name: string,
-  description: string
-): Promise<SpotifyPlaylist | null> {
-  const res = await fetch(`https://api.spotify.com/v1/users/${userId}/playlists`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ name, description, public: false }),
-  })
-  if (!res.ok) {
-    console.error("[tempo] createPlaylist failed", res.status, await res.text())
-    return null
-  }
-  const data = await res.json()
-  return { ...data, type: "playlist" as const }
+const MOOD_KEYWORDS: Record<string, string[]> = {
+  hyped:      ["hype", "pump", "energy", "beast", "fire", "power", "intense"],
+  "locked-in":["focus", "zone", "concentrate", "grind", "locked"],
+  floaty:     ["easy", "light", "morning", "smooth", "flow", "chill"],
+  heavy:      ["heavy", "power", "strength", "grind", "hard"],
+  chill:      ["chill", "relax", "easy", "calm", "recovery"],
+  angry:      ["rage", "metal", "anger", "aggressive", "rock"],
 }
 
-async function addTracks(token: string, playlistId: string, uris: string[]): Promise<void> {
-  await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ uris }),
-  })
+const LOCATION_KEYWORDS: Record<string, string[]> = {
+  street:    ["urban", "city", "hip hop", "street"],
+  park:      ["park", "outdoor", "nature"],
+  treadmill: ["gym", "treadmill", "indoor"],
+  trail:     ["trail", "mountain", "outdoor"],
 }
 
-// ── Build playlist ────────────────────────────────────────────────────────────
+// Genre-specific queries so Spotify returns genuinely different playlists per mood
+const MOOD_CATALOG_QUERY: Record<string, string> = {
+  hyped:      "rap trap hype workout pump",
+  "locked-in":"lo-fi focus deep concentration study",
+  floaty:     "indie ambient morning easy chill",
+  heavy:      "metal heavy gym power lifting",
+  chill:      "jazz lounge easy recovery soft",
+  angry:      "hardcore metal rage aggressive punk",
+}
 
-async function buildPlaylist(
+async function findContent(
   token: string,
   params: Record<string, string>
-): Promise<SpotifyPlaylist | null> {
+): Promise<SpotifyResult | null> {
   const mode = params.mode
-  let query = "running workout"
-  let name = "Tempo Run"
-  let description = "Generated by Tempo for your run"
 
-  if (mode === "cadence") {
-    const bpm = parseInt(params.bpm ?? "160")
-    if (bpm >= 180)      { query = "sprint interval hiit electronic"; name = `Tempo · ${bpm} BPM Sprint` }
-    else if (bpm >= 165) { query = "tempo run edm energetic";          name = `Tempo · ${bpm} BPM Tempo`  }
-    else if (bpm >= 145) { query = "steady run pop upbeat";            name = `Tempo · ${bpm} BPM Steady` }
-    else                 { query = "easy jog acoustic mellow";         name = `Tempo · ${bpm} BPM Easy`   }
-    description = `${bpm} BPM run mix generated by Tempo`
-  } else if (mode === "mood") {
-    query = MOOD_QUERY[params.mood] ?? "running workout"
-    const label = MOOD_LABEL[params.mood] ?? params.mood
-    name = `Tempo · ${label} Run`
-    description = `${label} mood run mix generated by Tempo`
-  } else if (mode === "mix") {
+  // ── Shows (podcast / coaching) ───────────────────────────────────────────
+  if (mode === "mix") {
     const types = (params.content ?? "music").split(",")
     if (types.includes("coaching")) {
-      query = "running coach audio guided training"
-      name = "Tempo · Coached Run"
-      description = "Guided coaching run mix generated by Tempo"
-    } else if (types.includes("podcasts")) {
-      query = "running motivation podcast"
-      name = "Tempo · Podcast Run"
-      description = "Podcast run mix generated by Tempo"
-    } else {
-      query = "running workout music"
-      name = "Tempo · Mix Run"
-      description = "Custom run mix generated by Tempo"
+      return (
+        (await searchCatalog(token, "running coach audio guided training", "show")) ??
+        (await searchCatalog(token, "running coach podcast", "show")) ??
+        (await searchCatalog(token, "running workout music", "playlist"))
+      )
+    }
+    if (types.includes("podcasts")) {
+      return (
+        (await searchCatalog(token, "running podcast training", "show")) ??
+        (await searchCatalog(token, "running podcast", "show")) ??
+        (await searchCatalog(token, "running workout music", "playlist"))
+      )
     }
   }
 
-  const [userId, trackUris] = await Promise.all([
-    getUserId(token),
-    searchTracks(token, query),
-  ])
+  // ── Build context keyword list (mood/BPM/location) ──────────────────────
+  const contextKeywords: string[] = []
 
-  if (!userId || trackUris.length === 0) return null
+  if (mode === "cadence") {
+    const bpm = parseInt(params.bpm ?? "160")
+    if (bpm >= 180) contextKeywords.push("sprint", "fast", "speed", "interval", "beast")
+    else if (bpm >= 165) contextKeywords.push("tempo", "race", "fast", "energy")
+    else if (bpm >= 145) contextKeywords.push("workout", "energy", "steady", "power")
+    else contextKeywords.push("easy", "jog", "recovery", "light", "morning")
+  }
 
-  const playlist = await createPlaylist(token, userId, name, description)
-  if (!playlist) return null
+  if (mode === "mood" || mode === "mix") {
+    contextKeywords.push(...(MOOD_KEYWORDS[params.mood] ?? []))
+    contextKeywords.push(...(LOCATION_KEYWORDS[params.location] ?? []))
+  }
 
-  await addTracks(token, playlist.id, trackUris.slice(0, 30))
+  // ── Build catalog query (genre-specific so results differ by mood/BPM) ────
+  let specificQuery = "running workout playlist"
+  if (mode === "cadence") {
+    const bpm = parseInt(params.bpm ?? "160")
+    if (bpm >= 180)      specificQuery = "sprint interval hiit electronic"
+    else if (bpm >= 165) specificQuery = "tempo run edm energetic"
+    else if (bpm >= 145) specificQuery = "steady run pop upbeat"
+    else                 specificQuery = "easy jog acoustic mellow"
+  } else if (mode === "mood") {
+    specificQuery = MOOD_CATALOG_QUERY[params.mood] ?? "running workout playlist"
+  } else if (mode === "mix") {
+    specificQuery = "running workout music playlist"
+  }
 
-  return playlist
+  // ── Phase 1: mood/context-specific catalog search ────────────────────────
+  const pickIdx = Math.floor(Date.now() / 1000) % 5
+  const specific = await searchCatalog(token, specificQuery, "playlist", pickIdx)
+  if (specific) return specific
+
+  // ── Phase 2: generic running catalog ─────────────────────────────────────
+  const generic = await searchCatalog(token, "running workout", "playlist")
+  if (generic) return generic
+
+  // ── Phase 3: broad fallback ───────────────────────────────────────────────
+  return searchCatalog(token, "workout", "playlist")
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -166,7 +167,7 @@ export default async function ResultPage({
   const token = (session as { accessToken: string }).accessToken
 
   const [result] = await Promise.all([
-    buildPlaylist(token, params),
+    findContent(token, params),
     new Promise<void>((resolve) => setTimeout(resolve, MIN_LOADING_MS)),
   ])
 
