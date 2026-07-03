@@ -26,13 +26,28 @@ export async function GET(req: NextRequest) {
   if (meRes.ok) results.userId = meData.id
   else results.meError = meData
 
-  // Test 2: search tracks
+  // Test 2: search tracks (no scope needed)
   const searchRes = await fetch(
     `https://api.spotify.com/v1/search?q=running+workout&type=track&limit=5`,
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
   )
   results.search = { status: searchRes.status, ok: searchRes.ok }
   if (!searchRes.ok) results.searchError = await searchRes.text()
+
+  // Test 2b: get user playlists (requires playlist-read-private)
+  const plRes = await fetch("https://api.spotify.com/v1/me/playlists?limit=1", {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  })
+  results.readPlaylists = { status: plRes.status, ok: plRes.ok }
+  if (!plRes.ok) results.readPlaylistsError = await plRes.text()
+
+  // Test 2c: get player state (requires user-read-playback-state)
+  const playerRes = await fetch("https://api.spotify.com/v1/me/player", {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  })
+  results.player = { status: playerRes.status, ok: playerRes.ok }
 
   // Test 3: create playlist
   if (meRes.ok && meData.id) {
