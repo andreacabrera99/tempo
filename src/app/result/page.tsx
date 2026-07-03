@@ -39,7 +39,7 @@ async function searchCatalog(
   pickIndex = 0
 ): Promise<SpotifyResult | null> {
   const res = await fetch(
-    `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=20`,
+    `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=5`,
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
   )
   if (!res.ok) return null
