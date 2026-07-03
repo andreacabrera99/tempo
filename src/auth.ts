@@ -6,6 +6,7 @@ const SCOPES = [
   "user-read-private",
   "playlist-read-private",
   "playlist-modify-private",
+  "playlist-modify-public",
   "user-read-playback-state",
   "user-top-read",
 ].join(" ")

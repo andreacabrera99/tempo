@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     const createRes = await fetch(`https://api.spotify.com/v1/users/${meData.id}/playlists`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Tempo Debug Test", description: "debug", public: false }),
+      body: JSON.stringify({ name: "Tempo Debug Test", description: "debug", public: true }),
     })
     results.createPlaylist = { status: createRes.status, ok: createRes.ok }
     if (!createRes.ok) {
