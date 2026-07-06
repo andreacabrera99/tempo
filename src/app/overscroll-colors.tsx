@@ -17,17 +17,28 @@ export function OverscrollColors() {
       return
     }
 
+    let lastDim: boolean | null = null
     const update = () => {
       const dim = isDesktop.matches || window.scrollY > 10
+      if (dim === lastDim) return
+      lastDim = dim
       document.documentElement.style.backgroundColor = dim ? dark : sky
       document.body.style.backgroundColor = dim ? dark : sky
     }
 
-    update()
-    window.addEventListener("scroll", update, { passive: true })
+    // iOS Safari doesn't reliably fire `scroll` events during the rubber-band
+    // bounce itself (scrollY is clamped, so no real scroll happens), which is
+    // what made the dark background lag behind by a beat. Polling every frame
+    // catches the transition instantly regardless of event timing.
+    let frame: number
+    const loop = () => {
+      update()
+      frame = requestAnimationFrame(loop)
+    }
+    frame = requestAnimationFrame(loop)
     isDesktop.addEventListener("change", update)
     return () => {
-      window.removeEventListener("scroll", update)
+      cancelAnimationFrame(frame)
       isDesktop.removeEventListener("change", update)
     }
   }, [isHome])
