@@ -169,7 +169,7 @@ export default async function Home() {
             style={{
               position: "absolute",
               inset: 0,
-              background: "linear-gradient(to bottom, #54759c 0%, rgba(84,117,156,0) 15%, rgba(0,0,0,0.00) 22%, rgba(0,0,0,0.92) 48%, rgba(0,0,0,1.00) 58%)",
+              background: "linear-gradient(to bottom, #54759c 0%, rgba(84,117,156,0) 15%, rgba(0,0,0,0.00) 55%, rgba(0,0,0,0.92) 80%, rgba(0,0,0,1.00) 90%)",
             }}
           />
         </div>

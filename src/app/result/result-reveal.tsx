@@ -28,19 +28,37 @@ export default function ResultReveal({ result, sharing = "solo" }: { result: Spo
     ? toSpotifyUri(result.external_urls.spotify, result.type)
     : null
 
-  async function handleStart() {
-    if (!spotifyUri) return
-    setLoading(true)
+  async function tryPlay(): Promise<boolean> {
+    if (!spotifyUri) return false
     try {
-      // Trigger playback via API so Spotify opens to the now-playing screen
-      await fetch("/api/play", {
+      const res = await fetch("/api/play", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contextUri: spotifyUri }),
       })
-    } catch {}
-    // Open Spotify — if play API succeeded it shows the player, otherwise opens the playlist
+      const data = await res.json()
+      return Boolean(data.ok)
+    } catch {
+      return false
+    }
+  }
+
+  async function handleStart() {
+    if (!spotifyUri) return
+    setLoading(true)
+
+    // If a Spotify device is already active, start playback right away.
+    let played = await tryPlay()
+
+    // Open the Spotify app — this registers it as a device and shows the player.
     window.location.href = spotifyUri
+
+    // The app may have just come online; retry the play command a few times
+    // until the device registers (stop once we've switched away from this tab).
+    for (let i = 0; i < 5 && !played && !document.hidden; i++) {
+      await new Promise((r) => setTimeout(r, 1000))
+      played = await tryPlay()
+    }
   }
 
   return (
@@ -72,9 +90,19 @@ export default function ResultReveal({ result, sharing = "solo" }: { result: Spo
             textTransform: "uppercase",
           }}
         >
-          ALL
-          <br />
-          SET UP.
+          {result ? (
+            <>
+              ALL
+              <br />
+              SET UP.
+            </>
+          ) : (
+            <>
+              NO
+              <br />
+              MATCH.
+            </>
+          )}
         </h1>
 
         {result?.name && (

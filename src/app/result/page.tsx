@@ -43,10 +43,11 @@ async function searchCatalog(
   type: "playlist" | "show",
   pickIndex = 0,
   durationMinutes = 0,
-  targetBpm = 0
+  targetBpm = 0,
+  limit = 5
 ): Promise<SpotifyResult | null> {
   const res = await fetch(
-    `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=5`,
+    `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=${limit}`,
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
   )
   if (!res.ok) return null
@@ -66,13 +67,16 @@ async function searchCatalog(
     if (fitted.length > 0) pool = fitted
   }
 
-  // For cadence mode, keep only playlists whose name matches the target BPM ±10.
+  // For cadence mode, keep only playlists whose name matches the target BPM
+  // exactly. Strict: if none match, return null so the caller can show a
+  // "no results" state rather than fall back to an off-cadence playlist.
   if (targetBpm > 0 && type === "playlist") {
     const bpmMatch = pool.filter((i) => {
       const n = extractBpm((i as SpotifyPlaylist).name ?? "")
-      return n !== null && Math.abs(n - targetBpm) <= 10
+      return n === targetBpm
     })
-    if (bpmMatch.length > 0) pool = bpmMatch
+    if (bpmMatch.length === 0) return null
+    pool = bpmMatch
   }
 
   return pool[pickIndex % pool.length] ?? null
@@ -161,10 +165,16 @@ async function findContent(
 
   const pickIdx = Math.floor(Date.now() / 1000) % 5
   const targetBpm = mode === "cadence" ? parseInt(params.bpm ?? "0") : 0
+  // Cadence search is strict, so widen the result set to give the exact BPM a
+  // fair chance of appearing before we filter.
+  const searchLimit = mode === "cadence" ? 50 : 5
 
   // Phase 1: specific query (exact BPM match enforced for cadence mode)
-  const specific = await searchCatalog(token, specificQuery, "playlist", pickIdx, durationMinutes, targetBpm)
+  const specific = await searchCatalog(token, specificQuery, "playlist", pickIdx, durationMinutes, targetBpm, searchLimit)
   if (specific) return specific
+
+  // Cadence is strict: no exact-BPM match means no result (no off-cadence fallback).
+  if (mode === "cadence") return null
 
   // Phase 2: generic running catalog (no BPM constraint — broad fallback)
   const generic = await searchCatalog(token, "running workout", "playlist", 0, durationMinutes)

@@ -204,11 +204,13 @@ function ModeStep({ onNext }: { onNext: (mode: string) => void }) {
 function CadenceBpmStep({
   onBack,
   onNext,
+  initial,
 }: {
   onBack: () => void
   onNext: (bpm: number) => void
+  initial: number
 }) {
-  const [bpm, setBpm] = useState(100)
+  const [bpm, setBpm] = useState(initial)
 
   const decrease = () => setBpm((v) => Math.max(100, v - 10))
   const increase = () => setBpm((v) => Math.min(200, v + 10))
@@ -323,11 +325,13 @@ const MIX_CONTENT = [
 function MixContentStep({
   onBack,
   onNext,
+  initial,
 }: {
   onBack: () => void
   onNext: (content: string[]) => void
+  initial: string[]
 }) {
-  const [selected, setSelected] = useState<Set<string>>(new Set(["music"]))
+  const [selected, setSelected] = useState<Set<string>>(new Set(initial))
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -451,11 +455,13 @@ const MOODS = [
 function MoodFeelingStep({
   onBack,
   onNext,
+  initial,
 }: {
   onBack: () => void
   onNext: (mood: string) => void
+  initial: string
 }) {
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string | null>(initial || null)
 
   return (
     <div
@@ -544,11 +550,13 @@ const LOCATIONS = [
 function MoodLocationStep({
   onBack,
   onNext,
+  initial,
 }: {
   onBack: () => void
   onNext: (location: string) => void
+  initial: string
 }) {
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string | null>(initial || null)
 
   return (
     <div
@@ -633,11 +641,13 @@ function MoodLocationStep({
 function CadenceSharingStep({
   onBack,
   onNext,
+  initial = "solo",
 }: {
   onBack: () => void
   onNext: (sharing: "crew" | "solo") => void
+  initial?: "crew" | "solo"
 }) {
-  const [selected, setSelected] = useState<"crew" | "solo">("solo")
+  const [selected, setSelected] = useState<"crew" | "solo">(initial)
 
   const options = [
     {
@@ -836,15 +846,17 @@ function CadenceGoalStep({
   onNext,
   step = 2,
   total = 3,
+  initial,
 }: {
   onBack: () => void
   onNext: (goal: { type: "time" | "distance"; value: number }) => void
   step?: number
   total?: number
+  initial: { type: "time" | "distance"; value: number }
 }) {
-  const [tab, setTab] = useState<"time" | "distance">("time")
-  const [minutes, setMinutes] = useState(20)
-  const [km, setKm] = useState(1)
+  const [tab, setTab] = useState<"time" | "distance">(initial.type)
+  const [minutes, setMinutes] = useState(initial.type === "time" ? initial.value : 20)
+  const [km, setKm] = useState(initial.type === "distance" ? initial.value : 1)
 
   const value = tab === "time" ? minutes : km
   const label = tab === "time" ? "MINUTES" : "KILOMETERS"
@@ -959,13 +971,15 @@ function MixPodcastTopicStep({
   onNext,
   step = 2,
   total = 4,
+  initial,
 }: {
   onBack: () => void
   onNext: (topic: string) => void
   step?: number
   total?: number
+  initial: string
 }) {
-  const [selected, setSelected] = useState("true-crime")
+  const [selected, setSelected] = useState(initial)
 
   return (
     <div
@@ -1044,12 +1058,13 @@ export default function OnboardingFlow() {
   const router = useRouter()
   const [flowStep, setFlowStep] = useState<FlowStep>("mode")
   const [mode, setMode] = useState<string | null>(null)
-  const [bpm, setBpm] = useState(160)
+  const [bpm, setBpm] = useState(100)
   const [mood, setMood] = useState("")
-  const [goal, setGoal] = useState<{ type: "time" | "distance"; value: number }>({ type: "time", value: 30 })
+  const [goal, setGoal] = useState<{ type: "time" | "distance"; value: number }>({ type: "time", value: 20 })
   const [location, setLocation] = useState("")
   const [content, setContent] = useState<string[]>(["music"])
   const [podcastTopic, setPodcastTopic] = useState("true-crime")
+  const [sharing, setSharing] = useState<"crew" | "solo">("solo")
 
   useEffect(() => {
     const pin = () => {
@@ -1061,10 +1076,11 @@ export default function OnboardingFlow() {
     return () => window.removeEventListener("scroll", pin)
   }, [])
 
-  function navigateToResult(sharing: "crew" | "solo") {
+  function navigateToResult(sharingChoice: "crew" | "solo") {
+    setSharing(sharingChoice)
     const p = new URLSearchParams()
     p.set("mode", mode!)
-    p.set("sharing", sharing)
+    p.set("sharing", sharingChoice)
     p.set("goalType", goal.type)
     p.set("goalValue", String(goal.value))
     if (mode === "cadence") p.set("bpm", String(bpm))
@@ -1086,6 +1102,7 @@ export default function OnboardingFlow() {
   if (flowStep === "cadence-bpm") {
     return (
       <CadenceBpmStep
+        initial={bpm}
         onBack={() => setFlowStep("mode")}
         onNext={(b) => { setBpm(b); setFlowStep("cadence-goal") }}
       />
@@ -1095,6 +1112,7 @@ export default function OnboardingFlow() {
   if (flowStep === "cadence-goal") {
     return (
       <CadenceGoalStep
+        initial={goal}
         onBack={() => setFlowStep("cadence-bpm")}
         onNext={(g) => { setGoal(g); setFlowStep("cadence-sharing") }}
       />
@@ -1104,6 +1122,7 @@ export default function OnboardingFlow() {
   if (flowStep === "mood-feeling") {
     return (
       <MoodFeelingStep
+        initial={mood}
         onBack={() => setFlowStep("mode")}
         onNext={(m) => { setMood(m); setFlowStep("mood-goal") }}
       />
@@ -1113,6 +1132,7 @@ export default function OnboardingFlow() {
   if (flowStep === "mood-goal") {
     return (
       <CadenceGoalStep
+        initial={goal}
         onBack={() => setFlowStep("mood-feeling")}
         onNext={(g) => { setGoal(g); setFlowStep("mood-location") }}
         step={2}
@@ -1124,6 +1144,7 @@ export default function OnboardingFlow() {
   if (flowStep === "mood-location") {
     return (
       <MoodLocationStep
+        initial={location}
         onBack={() => setFlowStep("mood-goal")}
         onNext={(l) => { setLocation(l); setFlowStep("mood-sharing") }}
       />
@@ -1133,6 +1154,7 @@ export default function OnboardingFlow() {
   if (flowStep === "mix-content") {
     return (
       <MixContentStep
+        initial={content}
         onBack={() => setFlowStep("mode")}
         onNext={(c) => {
           setContent(c)
@@ -1145,6 +1167,7 @@ export default function OnboardingFlow() {
   if (flowStep === "mix-podcast-topic") {
     return (
       <MixPodcastTopicStep
+        initial={podcastTopic}
         onBack={() => setFlowStep("mix-content")}
         onNext={(t) => { setPodcastTopic(t); setFlowStep("mix-goal") }}
         step={2}
@@ -1157,6 +1180,7 @@ export default function OnboardingFlow() {
     const hasPodcasts = content.includes("podcasts")
     return (
       <CadenceGoalStep
+        initial={goal}
         onBack={() => setFlowStep(hasPodcasts ? "mix-podcast-topic" : "mix-content")}
         onNext={(g) => { setGoal(g); setFlowStep("mix-sharing") }}
         step={hasPodcasts ? 3 : 2}
@@ -1168,6 +1192,7 @@ export default function OnboardingFlow() {
   if (flowStep === "mix-sharing") {
     return (
       <CadenceSharingStep
+        initial={sharing}
         onBack={() => setFlowStep("mix-goal")}
         onNext={navigateToResult}
       />
@@ -1177,6 +1202,7 @@ export default function OnboardingFlow() {
   if (flowStep === "mood-sharing") {
     return (
       <CadenceSharingStep
+        initial={sharing}
         onBack={() => setFlowStep("mood-location")}
         onNext={navigateToResult}
       />
@@ -1186,6 +1212,7 @@ export default function OnboardingFlow() {
   if (flowStep === "cadence-sharing") {
     return (
       <CadenceSharingStep
+        initial={sharing}
         onBack={() => setFlowStep("cadence-goal")}
         onNext={navigateToResult}
       />
