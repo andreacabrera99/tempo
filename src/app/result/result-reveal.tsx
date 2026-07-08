@@ -152,21 +152,63 @@ export default function ResultReveal({ result, sharing = "solo" }: { result: Spo
                   color: "#0a0a0a",
                 }}
               >
-                {loading ? "Opening Spotify…" : sharing === "crew" ? "Start the Jam" : "Start my run"}
+                {loading ? "Opening Spotify…" : "Start my run"}
               </span>
             </button>
             {sharing === "crew" && (
-              <p
-                className="text-center"
+              <div
+                className="w-full flex flex-col gap-3"
                 style={{
-                  fontFamily: "var(--font-geist-mono)",
-                  fontSize: "0.72rem",
-                  letterSpacing: "0.08em",
-                  color: "rgba(255,255,255,0.35)",
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(200,255,0,0.18)",
+                  borderRadius: 18,
+                  padding: "1.1rem 1.2rem",
                 }}
               >
-                In Spotify: tap ··· → Start a Jam to invite your crew
-              </p>
+                <p
+                  style={{
+                    fontFamily: "var(--font-geist-mono)",
+                    fontSize: "0.68rem",
+                    letterSpacing: "0.14em",
+                    textTransform: "uppercase",
+                    color: "#C8FF00",
+                  }}
+                >
+                  Invite your crew
+                </p>
+                {[
+                  "Tap ··· on the Spotify player",
+                  "Choose “Start a Jam” ⚡",
+                  "Share the link with your friends",
+                ].map((step, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <span
+                      className="flex items-center justify-center shrink-0"
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: 999,
+                        background: "#C8FF00",
+                        fontFamily: "var(--font-barlow)",
+                        fontWeight: 900,
+                        fontSize: "0.75rem",
+                        color: "#0a0a0a",
+                      }}
+                    >
+                      {i + 1}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: "var(--font-geist-sans)",
+                        fontSize: "0.85rem",
+                        color: "rgba(255,255,255,0.72)",
+                      }}
+                    >
+                      {step}
+                    </span>
+                  </div>
+                ))}
+              </div>
             )}
           </>
         ) : (

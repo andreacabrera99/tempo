@@ -1058,7 +1058,7 @@ export default function OnboardingFlow() {
   const router = useRouter()
   const [flowStep, setFlowStep] = useState<FlowStep>("mode")
   const [mode, setMode] = useState<string | null>(null)
-  const [bpm, setBpm] = useState(100)
+  const [bpm, setBpm] = useState(170)
   const [mood, setMood] = useState("")
   const [goal, setGoal] = useState<{ type: "time" | "distance"; value: number }>({ type: "time", value: 20 })
   const [location, setLocation] = useState("")
@@ -1075,6 +1075,18 @@ export default function OnboardingFlow() {
     window.addEventListener("scroll", pin, { passive: true })
     return () => window.removeEventListener("scroll", pin)
   }, [])
+
+  function resetToMode() {
+    setMode(null)
+    setBpm(170)
+    setMood("")
+    setGoal({ type: "time", value: 20 })
+    setLocation("")
+    setContent(["music"])
+    setPodcastTopic("true-crime")
+    setSharing("solo")
+    setFlowStep("mode")
+  }
 
   function navigateToResult(sharingChoice: "crew" | "solo") {
     setSharing(sharingChoice)
@@ -1103,7 +1115,7 @@ export default function OnboardingFlow() {
     return (
       <CadenceBpmStep
         initial={bpm}
-        onBack={() => setFlowStep("mode")}
+        onBack={resetToMode}
         onNext={(b) => { setBpm(b); setFlowStep("cadence-goal") }}
       />
     )
@@ -1123,7 +1135,7 @@ export default function OnboardingFlow() {
     return (
       <MoodFeelingStep
         initial={mood}
-        onBack={() => setFlowStep("mode")}
+        onBack={resetToMode}
         onNext={(m) => { setMood(m); setFlowStep("mood-goal") }}
       />
     )
@@ -1155,7 +1167,7 @@ export default function OnboardingFlow() {
     return (
       <MixContentStep
         initial={content}
-        onBack={() => setFlowStep("mode")}
+        onBack={resetToMode}
         onNext={(c) => {
           setContent(c)
           setFlowStep(c.includes("podcasts") ? "mix-podcast-topic" : "mix-goal")

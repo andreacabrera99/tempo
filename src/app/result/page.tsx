@@ -186,7 +186,7 @@ async function findContent(
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-const MIN_LOADING_MS = 2500
+const MIN_LOADING_MS = 800
 
 export default async function ResultPage({
   searchParams,
