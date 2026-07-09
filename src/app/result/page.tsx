@@ -186,9 +186,9 @@ const MOOD_CATALOG_QUERY: Record<string, string> = {
   hyped:       "hype workout running high energy motivation pump adrenaline upbeat energetic power",
   "locked-in": "flow state zone instrumental electronic no lyrics training steady rhythmic",
   floaty:      "dreamy ambient light airy morning easy chill run weightless breezy soft glide effortless",
-  heavy:       "grind mode dark bass slow build determination weighted steady relentless resilience",
+  heavy:       "build determination weighted steady relentless resilience",
   chill:       "slow recovery soft acoustic lounge unwind mellow calm gentle low-key rest",
-  angry:       "rage run explosive adrenaline intense furious raw unleashed fierce",
+  angry:       "explosive adrenaline intense furious raw unleashed fierce",
 }
 
 // Estimate run duration from goal params.
