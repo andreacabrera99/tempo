@@ -32,6 +32,11 @@ type SpotifyResult = SpotifyPlaylist | SpotifyShow
 
 // ── Spotify helpers ──────────────────────────────────────────────────────────
 
+// Spotify's playlist search now rejects `limit` above ~10 with HTTP 400
+// (it used to allow up to 50). Keep every search request at or below this or
+// the call fails and the whole mode silently returns "no match".
+const SEARCH_LIMIT = 10
+
 function extractBpm(name: string): number | null {
   const m = name.match(/\b(\d{2,3})\s*(?:bpm|spm)\b/i)
   return m ? parseInt(m[1]) : null
@@ -43,7 +48,7 @@ async function searchCatalog(
   type: "playlist" | "show",
   pickIndex = 0,
   durationMinutes = 0,
-  limit = 5
+  limit = SEARCH_LIMIT
 ): Promise<SpotifyResult | null> {
   const res = await fetch(
     `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=${limit}`,
@@ -74,7 +79,7 @@ async function searchCatalog(
 async function rawSearchPlaylists(
   token: string,
   query: string,
-  limit = 50
+  limit = SEARCH_LIMIT
 ): Promise<SpotifyPlaylist[]> {
   const res = await fetch(
     `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=playlist&limit=${limit}`,
