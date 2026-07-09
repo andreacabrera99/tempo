@@ -228,6 +228,17 @@ function extractDistanceKm(name: string): number | null {
   return m ? parseInt(m[1]) : null
 }
 
+// A guided-run episode must clearly signal running AND must not be a meditation,
+// sleep, or relaxation session — "guided" alone pulls in guided meditations
+// ("Visualización Guiada | Paseo por la Playa"), which are not what we want.
+const RUN_SIGNAL = /\b(run|running|runner|jog|jogging|sprint|treadmill|5k|10k|marathon|intervals?|fartlek|tempo|correr|carrera|trote)\b|guided run/i
+const NOT_A_RUN = /\b(meditaci[oó]n|meditation|visualizaci[oó]n|visualization|sleep|dormir|relaxation|relajaci[oó]n|calm|mindfulness|breathing|respiraci[oó]n|yoga|nap|anxiety|ansiedad|manifest|hypnosis|hipnosis|asmr)\b/i
+
+function isGuidedRunEpisode(e: SpotifyEpisode): boolean {
+  const text = `${e.name} ${e.description ?? ""}`
+  return RUN_SIGNAL.test(text) && !NOT_A_RUN.test(text)
+}
+
 // Search Spotify episodes (guided runs). Pages the results like searchCatalog
 // and dedupes by id, but keeps every episode — the caller ranks them by how
 // well they fit the user's goal.
@@ -285,7 +296,7 @@ async function findCoachingEpisode(
     for (const e of await searchEpisodes(token, q)) {
       if (seen.has(e.id)) continue
       seen.add(e.id)
-      all.push(e)
+      if (isGuidedRunEpisode(e)) all.push(e)
     }
   }
   if (all.length === 0) return null
