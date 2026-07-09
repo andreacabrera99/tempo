@@ -43,7 +43,6 @@ async function searchCatalog(
   type: "playlist" | "show",
   pickIndex = 0,
   durationMinutes = 0,
-  targetBpm = 0,
   limit = 5
 ): Promise<SpotifyResult | null> {
   const res = await fetch(
@@ -67,16 +66,75 @@ async function searchCatalog(
     if (fitted.length > 0) pool = fitted
   }
 
-  // For cadence mode, keep only playlists whose name matches the target BPM
-  // exactly. Strict: if none match, return null so the caller can show a
-  // "no results" state rather than fall back to an off-cadence playlist.
-  if (targetBpm > 0 && type === "playlist") {
-    const bpmMatch = pool.filter((i) => {
-      const n = extractBpm((i as SpotifyPlaylist).name ?? "")
-      return n === targetBpm
-    })
-    if (bpmMatch.length === 0) return null
-    pool = bpmMatch
+  return pool[pickIndex % pool.length] ?? null
+}
+
+// Raw playlist search: returns the mapped playlist items with no filtering, so
+// callers can apply their own priority rules.
+async function rawSearchPlaylists(
+  token: string,
+  query: string,
+  limit = 50
+): Promise<SpotifyPlaylist[]> {
+  const res = await fetch(
+    `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=playlist&limit=${limit}`,
+    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+  )
+  if (!res.ok) return []
+  const data = await res.json()
+  return (data.playlists?.items ?? [])
+    .filter(Boolean)
+    .map((p: SpotifyPlaylist) => ({ ...p, type: "playlist" as const }))
+}
+
+// Cadence mode: return a playlist whose title contains the EXACT target BPM
+// (e.g. "Running 140 BPM", "120 spm", "Workout - 120 BPM"), case-insensitive.
+// The exact number is a hard requirement — a different, higher or lower number
+// is never returned. Several queries are tried so a match is found for any
+// cadence 100–200; everything else (running context, artwork, duration fit) is
+// only a soft preference that is skipped whenever it would empty the pool.
+async function findCadencePlaylist(
+  token: string,
+  targetBpm: number,
+  durationMinutes: number,
+  pickIndex: number
+): Promise<SpotifyResult | null> {
+  const queries = [
+    `running ${targetBpm} bpm`,
+    `${targetBpm} bpm`,
+    `${targetBpm} spm`,
+    `workout ${targetBpm} bpm`,
+    `${targetBpm} bpm running playlist`,
+  ]
+
+  const seen = new Set<string>()
+  const matches: SpotifyPlaylist[] = []
+  for (const q of queries) {
+    const items = await rawSearchPlaylists(token, q)
+    for (const p of items) {
+      if (seen.has(p.id)) continue
+      if (extractBpm(p.name ?? "") === targetBpm) {
+        seen.add(p.id)
+        matches.push(p)
+      }
+    }
+    if (matches.length >= 8) break // enough variety, stop querying
+  }
+
+  if (matches.length === 0) return null
+
+  // Soft preferences, each applied only when it leaves at least one match, so a
+  // valid exact-BPM playlist is never discarded: running context → artwork →
+  // long enough for the run.
+  let pool = matches
+  const running = pool.filter((p) => isRunningPlaylist(p.name ?? ""))
+  if (running.length > 0) pool = running
+  const withImage = pool.filter((p) => p.images?.length > 0)
+  if (withImage.length > 0) pool = withImage
+  if (durationMinutes > 0) {
+    const minTracks = Math.ceil(durationMinutes / 4)
+    const fitted = pool.filter((p) => (p.tracks?.total ?? 0) >= minTracks)
+    if (fitted.length > 0) pool = fitted
   }
 
   return pool[pickIndex % pool.length] ?? null
@@ -152,31 +210,33 @@ async function findContent(
     }
   }
 
-  // ── Build catalog query (genre-specific so results differ by mood/BPM) ────
-  let specificQuery = "running workout playlist"
+  const pickIdx = Math.floor(Date.now() / 1000) % 5
+
+  // ── Cadence: match the exact BPM the user picked (100–200) ────────────────
   if (mode === "cadence") {
-    const bpm = parseInt(params.bpm ?? "160")
-    specificQuery = `${bpm} BPM OR ${bpm} SPM`
-  } else if (mode === "mood") {
+    const targetBpm = parseInt(params.bpm ?? "0")
+    if (targetBpm > 0) {
+      const cadence = await findCadencePlaylist(token, targetBpm, durationMinutes, pickIdx)
+      if (cadence) return cadence
+    }
+    // No playlist in Spotify's catalog names this exact cadence — no
+    // off-cadence fallback, so the caller shows a "no results" state.
+    return null
+  }
+
+  // ── Build catalog query (genre-specific so results differ by mood) ────────
+  let specificQuery = "running workout playlist"
+  if (mode === "mood") {
     specificQuery = MOOD_CATALOG_QUERY[params.mood] ?? "running workout playlist"
   } else if (mode === "mix") {
     specificQuery = "running workout music playlist"
   }
 
-  const pickIdx = Math.floor(Date.now() / 1000) % 5
-  const targetBpm = mode === "cadence" ? parseInt(params.bpm ?? "0") : 0
-  // Cadence search is strict, so widen the result set to give the exact BPM a
-  // fair chance of appearing before we filter.
-  const searchLimit = mode === "cadence" ? 50 : 5
-
-  // Phase 1: specific query (exact BPM match enforced for cadence mode)
-  const specific = await searchCatalog(token, specificQuery, "playlist", pickIdx, durationMinutes, targetBpm, searchLimit)
+  // Phase 1: specific query
+  const specific = await searchCatalog(token, specificQuery, "playlist", pickIdx, durationMinutes)
   if (specific) return specific
 
-  // Cadence is strict: no exact-BPM match means no result (no off-cadence fallback).
-  if (mode === "cadence") return null
-
-  // Phase 2: generic running catalog (no BPM constraint — broad fallback)
+  // Phase 2: generic running catalog (broad fallback)
   const generic = await searchCatalog(token, "running workout", "playlist", 0, durationMinutes)
   if (generic) return generic
 

@@ -1058,7 +1058,7 @@ export default function OnboardingFlow() {
   const router = useRouter()
   const [flowStep, setFlowStep] = useState<FlowStep>("mode")
   const [mode, setMode] = useState<string | null>(null)
-  const [bpm, setBpm] = useState(170)
+  const [bpm, setBpm] = useState(100)
   const [mood, setMood] = useState("")
   const [goal, setGoal] = useState<{ type: "time" | "distance"; value: number }>({ type: "time", value: 20 })
   const [location, setLocation] = useState("")
@@ -1078,7 +1078,7 @@ export default function OnboardingFlow() {
 
   function resetToMode() {
     setMode(null)
-    setBpm(170)
+    setBpm(100)
     setMood("")
     setGoal({ type: "time", value: 20 })
     setLocation("")
