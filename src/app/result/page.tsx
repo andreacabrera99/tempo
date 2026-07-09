@@ -61,8 +61,7 @@ async function searchCatalog(
         .filter((p: SpotifyPlaylist) => isRunningPlaylist(p.name ?? ""))
         .map((p: SpotifyPlaylist) => ({ ...p, type: "playlist" as const }))
     : (data.shows?.items ?? []).filter(Boolean).map((s: SpotifyShow) => ({ ...s, type: "show" as const }))
-  const withImage = items.filter((i) => i.images?.length > 0)
-  let pool = withImage.length > 0 ? withImage : items
+  let pool = items
 
   // Prefer playlists with enough tracks to cover the run duration (~4 min/track).
   if (durationMinutes > 0 && type === "playlist") {
