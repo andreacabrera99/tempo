@@ -23,7 +23,11 @@ export async function POST(req: NextRequest) {
   // No device yet — the app is still spinning up. The client will retry.
   if (!device) return NextResponse.json({ ok: false, reason: "no-device" }, { status: 200 })
 
-  const isPlaylist = typeof contextUri === "string" && contextUri.startsWith("spotify:playlist:")
+  const uri = typeof contextUri === "string" ? contextUri : ""
+  const isPlaylist = uri.startsWith("spotify:playlist:")
+  // A single episode (guided run) plays via `uris`, not `context_uri` — the
+  // context form only accepts album/artist/playlist/show collections.
+  const isEpisode = uri.startsWith("spotify:episode:")
 
   // For playlists, force the first track: turn shuffle off and start at offset 0.
   if (isPlaylist) {
@@ -33,9 +37,11 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const body = isPlaylist
-    ? { context_uri: contextUri, offset: { position: 0 } }
-    : { context_uri: contextUri }
+  const body = isEpisode
+    ? { uris: [uri] }
+    : isPlaylist
+    ? { context_uri: uri, offset: { position: 0 } }
+    : { context_uri: uri }
 
   const res = await fetch(
     `https://api.spotify.com/v1/me/player/play?device_id=${device.id}`,

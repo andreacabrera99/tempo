@@ -5,8 +5,9 @@ import { useState } from "react"
 interface SpotifyResult {
   external_urls: { spotify: string }
   name: string
-  type: "playlist" | "show"
+  type: "playlist" | "show" | "episode"
   tracks?: { total: number }
+  duration_ms?: number
 }
 
 function BoltIcon() {
@@ -17,7 +18,7 @@ function BoltIcon() {
   )
 }
 
-function toSpotifyUri(webUrl: string, type: "playlist" | "show"): string {
+function toSpotifyUri(webUrl: string, type: "playlist" | "show" | "episode"): string {
   const id = webUrl.split("/").pop()?.split("?")[0] ?? ""
   return `spotify:${type}:${id}`
 }
@@ -117,7 +118,18 @@ export default function ResultReveal({ result, sharing = "solo" }: { result: Spo
             >
               {result.name}
             </p>
-            {result.tracks?.total != null && (
+            {result.type === "episode" && result.duration_ms != null ? (
+              <p
+                style={{
+                  fontFamily: "var(--font-geist-mono)",
+                  fontSize: "0.72rem",
+                  letterSpacing: "0.08em",
+                  color: "rgba(255,255,255,0.22)",
+                }}
+              >
+                {Math.round(result.duration_ms / 60000)} min · guided run
+              </p>
+            ) : result.tracks?.total != null ? (
               <p
                 style={{
                   fontFamily: "var(--font-geist-mono)",
@@ -128,7 +140,7 @@ export default function ResultReveal({ result, sharing = "solo" }: { result: Spo
               >
                 ~{Math.round(result.tracks.total * 4)} min · {result.tracks.total} songs
               </p>
-            )}
+            ) : null}
           </div>
         )}
       </div>

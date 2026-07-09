@@ -28,7 +28,17 @@ type SpotifyShow = {
   type: "show"
 }
 
-type SpotifyResult = SpotifyPlaylist | SpotifyShow
+type SpotifyEpisode = {
+  id: string
+  name: string
+  description: string
+  images: SpotifyImage[]
+  external_urls: { spotify: string }
+  duration_ms: number
+  type: "episode"
+}
+
+type SpotifyResult = SpotifyPlaylist | SpotifyShow | SpotifyEpisode
 
 // ── Spotify helpers ──────────────────────────────────────────────────────────
 
@@ -141,6 +151,7 @@ async function findCadencePlaylist(
     const items = await rawSearchPlaylists(token, q)
     for (const p of items) {
       if (seen.has(p.id)) continue
+      if (OTHER_SPORT.test(p.name ?? "")) continue // wrong sport → never surface
       if (extractBpm(p.name ?? "") === targetBpm) {
         seen.add(p.id)
         matches.push(p)
@@ -168,10 +179,16 @@ async function findCadencePlaylist(
   return pool[pickIndex % pool.length] ?? null
 }
 
+// Playlists built for a *different* sport or workout modality. Unlike the
+// running-context words below (a soft preference), this is a HARD exclusion:
+// a pilates or indoor-cycling playlist is never surfaced even at the exact BPM.
+// General fitness words like "training" or "workout" are intentionally absent.
+const OTHER_SPORT = /\b(pilates|yoga|barre|spinning|spin|cycling|ciclismo|rowing|boxing|boxeo|kickboxing|crossfit|swimming|swim|natacion|zumba|elliptical)\b/i
+
 // Playlist names with these words signal a non-running context.
 // Word boundaries ensure "work" blocks "Work Vibes" but not "Workout Mix",
 // and "bar" blocks "Bar Lounge" but not "Barcelona".
-const NON_RUNNING_CONTEXT = /\b(desayuno|almuerzo|cena|breakfast|lunch|dinner|brunch|study|homework|work|office|bar|lounge|sleep|bedtime|porngore|gore|aggressive)\b/i
+const NON_RUNNING_CONTEXT = /\b(desayuno|almuerzo|cena|breakfast|lunch|dinner|brunch|study|homework|work|office|bar|lounge|sleep\w*|nap|bedtime|porngore|gore|aggressive|wwe)\b/i
 
 // Playlist names that are primarily a genre label (not running-specific).
 // Handled separately from context words for clarity.
@@ -186,7 +203,7 @@ const MOOD_CATALOG_QUERY: Record<string, string> = {
   hyped:       "hype workout running high energy motivation pump adrenaline upbeat energetic power",
   "locked-in": "flow state zone instrumental electronic no lyrics training steady rhythmic",
   floaty:      "dreamy ambient light airy morning easy chill run weightless breezy soft glide effortless",
-  heavy:       "build determination weighted steady relentless resilience",
+  heavy:       "grind mode build determination weighted steady relentless resilience",
   chill:       "slow recovery soft acoustic lounge unwind mellow calm gentle low-key rest",
   angry:       "explosive adrenaline intense furious raw unleashed fierce",
 }
@@ -200,6 +217,100 @@ function goalToDurationMinutes(goalType: string, goalValue: number): number {
   return 0
 }
 
+// Pull a distance (in km) out of an episode title so we can match it against
+// the user's distance goal. Handles "5K", "10 km", "half marathon" (21K) and
+// "marathon" (42K). Returns null when the title carries no distance.
+function extractDistanceKm(name: string): number | null {
+  const n = name.toLowerCase()
+  if (/\bhalf[-\s]?marathon\b/.test(n)) return 21
+  if (/\bmarathon\b/.test(n)) return 42
+  const m = n.match(/\b(\d{1,3})\s*(?:k|km)\b/)
+  return m ? parseInt(m[1]) : null
+}
+
+// Search Spotify episodes (guided runs). Pages the results like searchCatalog
+// and dedupes by id, but keeps every episode — the caller ranks them by how
+// well they fit the user's goal.
+async function searchEpisodes(
+  token: string,
+  query: string,
+  limit = SEARCH_LIMIT
+): Promise<SpotifyEpisode[]> {
+  const pages = await Promise.all(
+    Array.from({ length: SEARCH_PAGES }, (_, i) =>
+      fetch(
+        `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=episode&limit=${limit}&offset=${i * limit}`,
+        { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+      )
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null)
+    )
+  )
+
+  const raw = pages.flatMap((data) => data?.episodes?.items ?? [])
+  const seen = new Set<string>()
+  return raw
+    .filter(Boolean)
+    .filter((e: SpotifyEpisode) => {
+      if (seen.has(e.id)) return false
+      seen.add(e.id)
+      return true
+    })
+    .map((e: SpotifyEpisode) => ({ ...e, type: "episode" as const }))
+}
+
+// Coaching mode: return a single guided-run EPISODE matched to the user's goal.
+// For a distance goal we match the literal distance in the episode title
+// (e.g. a "5K" goal finds a "5K Guided Run" episode). For a time goal — or when
+// no title names the exact distance — we fall back to the episode whose actual
+// audio length is closest to the target duration, so the user always gets a
+// guided run rather than a "no match".
+async function findCoachingEpisode(
+  token: string,
+  goalType: string,
+  goalValue: number,
+  durationMinutes: number,
+  pickIndex: number
+): Promise<SpotifyResult | null> {
+  const queries = [
+    "guided run coach",
+    "guided running workout intervals",
+    "coach audio guided run",
+    "running guided run walk run",
+  ]
+
+  const seen = new Set<string>()
+  const all: SpotifyEpisode[] = []
+  for (const q of queries) {
+    for (const e of await searchEpisodes(token, q)) {
+      if (seen.has(e.id)) continue
+      seen.add(e.id)
+      all.push(e)
+    }
+  }
+  if (all.length === 0) return null
+
+  // Distance goal → match the literal distance in the title (option B).
+  if (goalType === "distance" && goalValue > 0) {
+    const target = Math.round(goalValue)
+    const matches = all.filter((e) => extractDistanceKm(e.name) === target)
+    if (matches.length > 0) return matches[pickIndex % matches.length]
+    // No title names this exact distance — fall through to duration matching.
+  }
+
+  // Time goal (or distance fallback) → closest actual audio length.
+  if (durationMinutes > 0) {
+    const sorted = [...all].sort(
+      (a, b) =>
+        Math.abs(a.duration_ms / 60000 - durationMinutes) -
+        Math.abs(b.duration_ms / 60000 - durationMinutes)
+    )
+    return sorted[0]
+  }
+
+  return all[pickIndex % all.length]
+}
+
 async function findContent(
   token: string,
   params: Record<string, string>
@@ -210,13 +321,24 @@ async function findContent(
     parseFloat(params.goalValue ?? "0")
   )
 
+  // Rotate across the paged pool so a refresh can surface a different pick.
+  const rotateIdx = Math.floor(Date.now() / 1000) % (SEARCH_LIMIT * SEARCH_PAGES)
+
   // ── Shows (podcast / coaching) ───────────────────────────────────────────
   if (mode === "mix") {
     const types = (params.content ?? "music").split(",")
     if (types.includes("coaching")) {
+      const episode = await findCoachingEpisode(
+        token,
+        params.goalType ?? "",
+        parseFloat(params.goalValue ?? "0"),
+        durationMinutes,
+        rotateIdx
+      )
+      if (episode) return episode
+      // No guided-run episode matched — fall back to a show, then a playlist.
       return (
         (await searchCatalog(token, "running coach audio guided training", "show", 0, durationMinutes)) ??
-        (await searchCatalog(token, "running coach podcast", "show", 0, durationMinutes)) ??
         (await searchCatalog(token, "running workout music", "playlist", 0, durationMinutes))
       )
     }
@@ -238,9 +360,9 @@ async function findContent(
     }
   }
 
-  // Rotate across the whole paged pool (not just the first 5) so a refresh can
-  // surface later results too. `searchCatalog` wraps this to the real pool size.
-  const pickIdx = Math.floor(Date.now() / 1000) % (SEARCH_LIMIT * SEARCH_PAGES)
+  // `rotateIdx` (above) also drives the pool rotation here — one refresh clock
+  // shared across modes. `searchCatalog` wraps it to the real pool size.
+  const pickIdx = rotateIdx
 
   // ── Cadence: match the exact BPM the user picked (100–200) ────────────────
   if (mode === "cadence") {
