@@ -37,6 +37,11 @@ type SpotifyResult = SpotifyPlaylist | SpotifyShow
 // the call fails and the whole mode silently returns "no match".
 const SEARCH_LIMIT = 10
 
+// Page through the search with `offset` to build a bigger pool than a single
+// 10-item page allows — more variety when rotating and fewer drops to the
+// generic fallbacks after the running/duration filters trim the pool.
+const SEARCH_PAGES = 3
+
 function extractBpm(name: string): number | null {
   const m = name.match(/\b(\d{2,3})\s*(?:bpm|spm)\b/i)
   return m ? parseInt(m[1]) : null
@@ -50,17 +55,36 @@ async function searchCatalog(
   durationMinutes = 0,
   limit = SEARCH_LIMIT
 ): Promise<SpotifyResult | null> {
-  const res = await fetch(
-    `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=${limit}`,
-    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+  // Fetch every page in parallel; a failed page (e.g. offset past the end)
+  // contributes nothing rather than sinking the whole search.
+  const pages = await Promise.all(
+    Array.from({ length: SEARCH_PAGES }, (_, i) =>
+      fetch(
+        `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=${limit}&offset=${i * limit}`,
+        { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+      )
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null)
+    )
   )
-  if (!res.ok) return null
-  const data = await res.json()
+
+  const rawItems = pages.flatMap((data) =>
+    type === "playlist" ? (data?.playlists?.items ?? []) : (data?.shows?.items ?? [])
+  )
+
+  // Dedupe by id — offset paging can overlap when the catalog shifts between requests.
+  const seen = new Set<string>()
+  const deduped = rawItems.filter(Boolean).filter((it: SpotifyResult) => {
+    if (seen.has(it.id)) return false
+    seen.add(it.id)
+    return true
+  })
+
   const items: SpotifyResult[] = type === "playlist"
-    ? (data.playlists?.items ?? []).filter(Boolean)
+    ? deduped
         .filter((p: SpotifyPlaylist) => isRunningPlaylist(p.name ?? ""))
         .map((p: SpotifyPlaylist) => ({ ...p, type: "playlist" as const }))
-    : (data.shows?.items ?? []).filter(Boolean).map((s: SpotifyShow) => ({ ...s, type: "show" as const }))
+    : deduped.map((s: SpotifyShow) => ({ ...s, type: "show" as const }))
   let pool = items
 
   // Prefer playlists with enough tracks to cover the run duration (~4 min/track).
@@ -214,7 +238,9 @@ async function findContent(
     }
   }
 
-  const pickIdx = Math.floor(Date.now() / 1000) % 5
+  // Rotate across the whole paged pool (not just the first 5) so a refresh can
+  // surface later results too. `searchCatalog` wraps this to the real pool size.
+  const pickIdx = Math.floor(Date.now() / 1000) % (SEARCH_LIMIT * SEARCH_PAGES)
 
   // ── Cadence: match the exact BPM the user picked (100–200) ────────────────
   if (mode === "cadence") {
