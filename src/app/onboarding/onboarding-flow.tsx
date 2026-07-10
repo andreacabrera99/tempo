@@ -331,15 +331,14 @@ function MixContentStep({
   onNext: (content: string[]) => void
   initial: string[]
 }) {
-  const [selected, setSelected] = useState<Set<string>>(new Set(initial))
+  // Music is always part of the mix; the runner layers exactly one spoken-word
+  // pick (podcast or coaching) on top of it.
+  const [layer, setLayer] = useState<string>(
+    initial.find((id) => id === "podcasts" || id === "coaching") ?? ""
+  )
 
-  function toggle(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
+  const music = MIX_CONTENT.find((i) => i.id === "music")!
+  const layers = MIX_CONTENT.filter((i) => i.id !== "music")
 
   return (
     <div
@@ -349,10 +348,11 @@ function MixContentStep({
         paddingTop: "calc(env(safe-area-inset-top) + 2rem)",
       }}
     >
-      <StepHeader onBack={onBack} step={1} total={3} />
+      {/* Podcasts adds a topic step (4 total); coaching goes straight to goal (3). */}
+      <StepHeader onBack={onBack} step={1} total={layer === "podcasts" ? 4 : 3} />
 
       <h1
-        className="text-white leading-[0.92] mb-8"
+        className="text-white leading-[0.92] mb-3"
         style={{
           fontFamily: "var(--font-barlow)",
           fontWeight: 900,
@@ -362,13 +362,25 @@ function MixContentStep({
         What do you want to hear?
       </h1>
 
+      <p
+        className="mb-8"
+        style={{
+          fontFamily: "var(--font-geist-mono)",
+          fontSize: "0.8rem",
+          lineHeight: 1.4,
+          color: "rgba(255,255,255,0.4)",
+        }}
+      >
+        Music is always in your mix. Pick one to layer on top — it plays first, then music.
+      </p>
+
       <div className="flex flex-col gap-3 flex-1">
-        {MIX_CONTENT.map((item) => {
-          const isSelected = selected.has(item.id)
+        {layers.map((item) => {
+          const isSelected = layer === item.id
           return (
             <button
               key={item.id}
-              onClick={() => toggle(item.id)}
+              onClick={() => setLayer(item.id)}
               className="flex items-center gap-4 rounded-2xl px-4 py-5 text-left transition-all active:scale-[0.98]"
               style={{
                 background: "#111111",
@@ -404,7 +416,7 @@ function MixContentStep({
                 </div>
               </div>
 
-              {/* Checkbox */}
+              {/* Radio */}
               <div
                 className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
                 style={{
@@ -421,11 +433,53 @@ function MixContentStep({
             </button>
           )
         })}
+
+        {/* Music — always included, not toggleable */}
+        <div
+          className="flex items-center gap-4 rounded-2xl px-4 py-5"
+          style={{ background: "#111111", border: "2px solid rgba(200,255,0,0.22)" }}
+        >
+          <div
+            className="flex items-center justify-center rounded-xl shrink-0"
+            style={{ width: 48, height: 48, background: "#1a1a1a" }}
+          >
+            {music.icon}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div
+              className="leading-tight text-white mb-0.5"
+              style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "1.1rem" }}
+            >
+              {music.label}
+            </div>
+            <div
+              className="text-xs leading-snug"
+              style={{ fontFamily: "var(--font-geist-mono)", color: "rgba(255,255,255,0.4)" }}
+            >
+              {music.description}
+            </div>
+          </div>
+
+          <span
+            className="shrink-0 rounded-full px-2.5 py-1"
+            style={{
+              background: "rgba(200,255,0,0.14)",
+              color: "#C8FF00",
+              fontFamily: "var(--font-geist-mono)",
+              fontSize: "0.6rem",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}
+          >
+            Always in
+          </span>
+        </div>
       </div>
 
       <button
-        onClick={() => selected.size > 0 && onNext(Array.from(selected))}
-        disabled={selected.size === 0}
+        onClick={() => layer && onNext(["music", layer])}
+        disabled={!layer}
         className="mt-8 w-full py-4 rounded-full transition-all active:scale-[0.98] disabled:opacity-25 disabled:cursor-not-allowed"
         style={{
           fontFamily: "var(--font-oswald)",
@@ -887,7 +941,7 @@ function CadenceGoalStep({
         className="flex rounded-full p-1 mb-8"
         style={{ background: "#18181b" }}
       >
-        {(["time", "distance"] as const).map((t) => (
+        {(["distance", "time"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -964,6 +1018,7 @@ const PODCAST_TOPICS = [
   { id: "comedy",      label: "Comedy",              description: "laughs for the long miles" },
   { id: "health",      label: "Health & nutrition",  description: "body, food & performance" },
   { id: "growth",      label: "Personal growth",     description: "mindset, habits & motivation" },
+  { id: "mental-health", label: "Mental health",     description: "mind, calm & wellbeing" },
 ]
 
 function MixPodcastTopicStep({

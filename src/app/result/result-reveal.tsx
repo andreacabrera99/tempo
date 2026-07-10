@@ -18,16 +18,19 @@ function BoltIcon() {
   )
 }
 
-function toSpotifyUri(webUrl: string, type: "playlist" | "show" | "episode"): string {
-  const id = webUrl.split("/").pop()?.split("?")[0] ?? ""
-  return `spotify:${type}:${id}`
-}
-
-export default function ResultReveal({ result, sharing = "solo" }: { result: SpotifyResult | null; sharing?: "solo" | "crew" }) {
+export default function ResultReveal({
+  result,
+  playUri = null,
+  queuePlaylistId = null,
+  sharing = "solo",
+}: {
+  result: SpotifyResult | null
+  playUri?: string | null
+  queuePlaylistId?: string | null
+  sharing?: "solo" | "crew"
+}) {
   const [loading, setLoading] = useState(false)
-  const spotifyUri = result
-    ? toSpotifyUri(result.external_urls.spotify, result.type)
-    : null
+  const spotifyUri = playUri
 
   async function tryPlay(): Promise<boolean> {
     if (!spotifyUri) return false
@@ -35,7 +38,7 @@ export default function ResultReveal({ result, sharing = "solo" }: { result: Spo
       const res = await fetch("/api/play", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contextUri: spotifyUri }),
+        body: JSON.stringify({ contextUri: spotifyUri, queuePlaylistId }),
       })
       const data = await res.json()
       return Boolean(data.ok)
@@ -141,6 +144,19 @@ export default function ResultReveal({ result, sharing = "solo" }: { result: Spo
                 ~{Math.round(result.tracks.total * 4)} min · {result.tracks.total} songs
               </p>
             ) : null}
+            {queuePlaylistId && (
+              <p
+                style={{
+                  fontFamily: "var(--font-geist-mono)",
+                  fontSize: "0.68rem",
+                  letterSpacing: "0.1em",
+                  color: "#C8FF00",
+                  marginTop: "0.35rem",
+                }}
+              >
+                then running music · skip to switch →
+              </p>
+            )}
           </div>
         )}
       </div>

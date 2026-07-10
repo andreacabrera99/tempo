@@ -228,15 +228,85 @@ function extractDistanceKm(name: string): number | null {
   return m ? parseInt(m[1]) : null
 }
 
-// A guided-run episode must clearly signal running AND must not be a meditation,
-// sleep, or relaxation session — "guided" alone pulls in guided meditations
-// ("Visualización Guiada | Paseo por la Playa"), which are not what we want.
-const RUN_SIGNAL = /\b(run|running|runner|jog|jogging|sprint|treadmill|5k|10k|marathon|intervals?|fartlek|tempo|correr|carrera|trote)\b|guided run/i
+// A guided-run episode must clearly signal a running WORKOUT in its TITLE — not
+// just its description. Requiring the signal in the description too loosely
+// accepts chatty episodes from running podcasts (e.g. "I Wrote a Book!") whose
+// notes happen to mention running; a real guided run always names the session
+// in the title ("45 min Easy Run", "5K Guided Run", "Zone 2 Workout"). It must
+// also not be a meditation/sleep/relaxation session — "guided" alone pulls in
+// guided meditations ("Visualización Guiada | Paseo por la Playa").
+const RUN_SIGNAL = /\b(run|running|runner|jog|jogging|sprint|treadmill|5k|10k|marathon|intervals?|fartlek|tempo|workout|correr|carrera|trote)\b|guided run|zone\s?2/i
 const NOT_A_RUN = /\b(meditaci[oó]n|meditation|visualizaci[oó]n|visualization|sleep|dormir|relaxation|relajaci[oó]n|calm|mindfulness|breathing|respiraci[oó]n|yoga|nap|anxiety|ansiedad|manifest|hypnosis|hipnosis|asmr)\b/i
 
+// Some guided-run shows also publish walking sessions (incl. run/walk intervals).
+// The user wants these out of coaching results, so a "walk" in the TITLE excludes
+// the episode (title only — a run's notes may mention "walk breaks").
+const WALK_SESSION = /\b(walk|walking|caminata|caminar|caminando)\b/i
+
 function isGuidedRunEpisode(e: SpotifyEpisode): boolean {
-  const text = `${e.name} ${e.description ?? ""}`
-  return RUN_SIGNAL.test(text) && !NOT_A_RUN.test(text)
+  const name = e.name ?? ""
+  const text = `${name} ${e.description ?? ""}`
+  return RUN_SIGNAL.test(name) && !NOT_A_RUN.test(text) && !WALK_SESSION.test(name)
+}
+
+// Curated "battery" of Spotify show ids that publish real guided-run sessions.
+// Coaching mode pulls episodes ONLY from these, so broad-search noise (chatty
+// episodes, guided meditations) can't slip in. Add or remove show ids here to
+// tune the pool.
+const GUIDED_RUN_SHOWS = [
+  "6WPEqzWlPxkVpYCcsMRHB1",
+  "64KAxOWJvintTQTrT44BCe",
+  "4FPHb30CddB1S5X9Cndqlw",
+  "5pX7zIsx9JzzIWYd0WH9Jo",
+  "6qeE3SshwqWKjqnHK1KY2g",
+  "5kGSzUCiDA4uoXqupogt7T",
+]
+
+// Fetch a show's episodes (newest first). Spotify caps this endpoint at 50/page;
+// one page is plenty of guided runs to match a goal against.
+async function fetchShowEpisodes(
+  token: string,
+  showId: string,
+  limit = 50
+): Promise<SpotifyEpisode[]> {
+  const res = await fetch(
+    `https://api.spotify.com/v1/shows/${showId}/episodes?limit=${limit}`,
+    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+  )
+  if (!res.ok) return []
+  const data = await res.json()
+  return (data.items ?? [])
+    .filter(Boolean)
+    .map((e: SpotifyEpisode) => ({ ...e, type: "episode" as const }))
+}
+
+// Fetch a single show by id (for the curated podcast battery — returns the whole
+// show, so Spotify starts its latest episode on play).
+async function fetchShow(token: string, showId: string): Promise<SpotifyShow | null> {
+  const res = await fetch(`https://api.spotify.com/v1/shows/${showId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  })
+  if (!res.ok) return null
+  const s = await res.json()
+  return { ...s, type: "show" as const }
+}
+
+// Gather every guided-run episode from the curated battery, deduped and filtered
+// so the occasional talk/intro episode inside a running show is skipped.
+async function fetchBatteryEpisodes(token: string): Promise<SpotifyEpisode[]> {
+  const lists = await Promise.all(
+    GUIDED_RUN_SHOWS.map((id) => fetchShowEpisodes(token, id))
+  )
+
+  const seen = new Set<string>()
+  const out: SpotifyEpisode[] = []
+  for (const e of lists.flat()) {
+    if (seen.has(e.id)) continue
+    seen.add(e.id)
+    if (isGuidedRunEpisode(e)) out.push(e)
+  }
+  return out
 }
 
 // Search Spotify episodes (guided runs). Pages the results like searchCatalog
@@ -270,12 +340,41 @@ async function searchEpisodes(
     .map((e: SpotifyEpisode) => ({ ...e, type: "episode" as const }))
 }
 
+// Pick the episode from a pool that best fits the user's goal.
+// Distance goal → match the literal distance in the title (option B), e.g. a
+// "5K" goal finds a "5K Guided Run". Time goal — or a distance with no literal
+// title match — → the episode whose actual audio length is closest, so the user
+// always gets a guided run rather than a "no match".
+function pickEpisodeForGoal(
+  pool: SpotifyEpisode[],
+  goalType: string,
+  goalValue: number,
+  durationMinutes: number,
+  pickIndex: number
+): SpotifyEpisode | null {
+  if (pool.length === 0) return null
+
+  if (goalType === "distance" && goalValue > 0) {
+    const target = Math.round(goalValue)
+    const matches = pool.filter((e) => extractDistanceKm(e.name) === target)
+    if (matches.length > 0) return matches[pickIndex % matches.length]
+    // No title names this exact distance — fall through to duration matching.
+  }
+
+  if (durationMinutes > 0) {
+    return [...pool].sort(
+      (a, b) =>
+        Math.abs(a.duration_ms / 60000 - durationMinutes) -
+        Math.abs(b.duration_ms / 60000 - durationMinutes)
+    )[0]
+  }
+
+  return pool[pickIndex % pool.length]
+}
+
 // Coaching mode: return a single guided-run EPISODE matched to the user's goal.
-// For a distance goal we match the literal distance in the episode title
-// (e.g. a "5K" goal finds a "5K Guided Run" episode). For a time goal — or when
-// no title names the exact distance — we fall back to the episode whose actual
-// audio length is closest to the target duration, so the user always gets a
-// guided run rather than a "no match".
+// Prefer the curated battery of guided-run shows; only if that yields nothing
+// (shows unavailable, or no goal fit) fall back to a broad episode search.
 async function findCoachingEpisode(
   token: string,
   goalType: string,
@@ -283,13 +382,18 @@ async function findCoachingEpisode(
   durationMinutes: number,
   pickIndex: number
 ): Promise<SpotifyResult | null> {
+  // 1. Curated battery — high precision.
+  const battery = await fetchBatteryEpisodes(token)
+  const fromBattery = pickEpisodeForGoal(battery, goalType, goalValue, durationMinutes, pickIndex)
+  if (fromBattery) return fromBattery
+
+  // 2. Broad episode search — only reached if the battery came back empty.
   const queries = [
     "guided run coach",
     "guided running workout intervals",
     "coach audio guided run",
-    "running guided run walk run",
+    "running guided run",
   ]
-
   const seen = new Set<string>()
   const all: SpotifyEpisode[] = []
   for (const q of queries) {
@@ -299,33 +403,109 @@ async function findCoachingEpisode(
       if (isGuidedRunEpisode(e)) all.push(e)
     }
   }
-  if (all.length === 0) return null
+  return pickEpisodeForGoal(all, goalType, goalValue, durationMinutes, pickIndex)
+}
 
-  // Distance goal → match the literal distance in the title (option B).
-  if (goalType === "distance" && goalValue > 0) {
-    const target = Math.round(goalValue)
-    const matches = all.filter((e) => extractDistanceKm(e.name) === target)
-    if (matches.length > 0) return matches[pickIndex % matches.length]
-    // No title names this exact distance — fall through to duration matching.
+// Curated podcast shows per topic (Spotify show ids). Podcast mode picks one —
+// rotating for variety — and returns the whole show, so Spotify starts its
+// latest episode on play. Fill each list with hand-picked show ids.
+const PODCAST_BATTERY: Record<string, string[]> = {
+  "true-crime": [
+    "1VsDIDtqSPU79fZGHu4sdI",
+    "2L0L4rggG3E9s9DHhSUzly",
+    "5P1sJYtNfyUpIniOVVTS3u",
+    "6wF969GfLUfypoKaicH5gr",
+    "6MjgJqm88DAtaay8euRUpP",
+  ],
+  "news":       [
+    "6UChlBVtUwxsodxJBiepUz",
+    "6Y7m1gQ2Uby15Hy3ow2jRu",
+    "7GIjPB112ZItDWPcDSG5Ze",
+    "5X2O35fLXaXrNZUtP48LI9",
+    "4zJjzOg3ZMMxjLZqAmIh1F",
+  ],
+  "comedy":     [
+    "3zCs8D2qcTAMAbYV1eM1ad",
+    "3RCsriiuV8oJzkTF0hynmZ",
+    "4LcHROhr5Tpjr6y0lsAZJV",
+    "6lVP9WW2F2fdaw3Md7EgHt",
+    "3FEVpa8S2DfIRxgaSx3j5G",
+  ],
+  "health":     [
+    "5KNb5u8CXjthXMTDcoBVdV",
+    "2dZB87fvRqJ4B7dCN6ZESk",
+    "3venIYsCE3fWo3jCM1Klan",
+    "2RaBwb8FEabMJVR2QxO7FA",
+    "6lG1SeAF4F4McUiJm6BRyq",
+  ],
+  "growth":     [
+    "3GcV1VW7InfQrr7ele4wmi",
+    "4zeEGCXH4Au4WdokuRvJHf",
+    "0NMAX9EvgJZgPeEN1288UI",
+    "76yWrwFQ7H7JaFNv4UK35a",
+  ],
+  "mental-health": [
+    "0KUjSzqMyxrTyXuw15j4e8",
+    "12FUVepQBgaBf7mhrLhmk5",
+    "0sGGLIDnnijRPLef7InllD",
+    "6xKpLdvm45jVLp7gD9O3DY",
+  ],
+}
+
+// Pick a curated show for the topic, rotating across the list and skipping any
+// id that fails to fetch. Returns null when the topic has no curated shows yet.
+async function findTopicPodcast(
+  token: string,
+  topic: string,
+  pickIndex: number
+): Promise<SpotifyResult | null> {
+  const ids = PODCAST_BATTERY[topic] ?? []
+  for (let i = 0; i < ids.length; i++) {
+    const show = await fetchShow(token, ids[(pickIndex + i) % ids.length])
+    if (show) return show
   }
+  return null
+}
 
-  // Time goal (or distance fallback) → closest actual audio length.
-  if (durationMinutes > 0) {
-    const sorted = [...all].sort(
-      (a, b) =>
-        Math.abs(a.duration_ms / 60000 - durationMinutes) -
-        Math.abs(b.duration_ms / 60000 - durationMinutes)
-    )
-    return sorted[0]
-  }
+// What the result screen needs: the item to DISPLAY, the exact uri to start
+// playback with, and — for mix combos — a playlist whose tracks are queued after
+// so the runner can skip from the podcast/coaching straight into music.
+type ContentResult = {
+  display: SpotifyResult
+  playUri: string
+  queuePlaylistId?: string
+}
 
-  return all[pickIndex % all.length]
+function uriOf(r: { type: string; id: string }): string {
+  return `spotify:${r.type}:${r.id}`
+}
+
+function single(r: SpotifyResult | null): ContentResult | null {
+  return r ? { display: r, playUri: uriOf(r) } : null
+}
+
+// The "running workout music" playlist queued after a podcast/coaching pick in a
+// mix combo. Reused query so music always fits the run.
+async function findMixMusicPlaylist(
+  token: string,
+  durationMinutes: number,
+  pickIndex: number
+): Promise<SpotifyPlaylist | null> {
+  const p = await searchCatalog(token, "running workout music playlist", "playlist", pickIndex, durationMinutes)
+  return p && p.type === "playlist" ? p : null
+}
+
+// Latest episode of a show as a play uri — a show uri can't sit inside a `uris`
+// play list, so podcasts+music chains the latest episode instead of the show.
+async function latestEpisodeUri(token: string, showId: string): Promise<string | null> {
+  const eps = await fetchShowEpisodes(token, showId, 1)
+  return eps[0] ? uriOf(eps[0]) : null
 }
 
 async function findContent(
   token: string,
   params: Record<string, string>
-): Promise<SpotifyResult | null> {
+): Promise<ContentResult | null> {
   const mode = params.mode
   const durationMinutes = goalToDurationMinutes(
     params.goalType ?? "",
@@ -338,6 +518,10 @@ async function findContent(
   // ── Shows (podcast / coaching) ───────────────────────────────────────────
   if (mode === "mix") {
     const types = (params.content ?? "music").split(",")
+    // A mix always pairs one spoken-word pick (podcast/coaching) with music; the
+    // podcast plays first and the music playlist is queued right after it.
+    const wantsMusic = types.includes("music")
+
     if (types.includes("coaching")) {
       const episode = await findCoachingEpisode(
         token,
@@ -346,25 +530,50 @@ async function findContent(
         durationMinutes,
         rotateIdx
       )
-      if (episode) return episode
+      if (episode) {
+        if (wantsMusic) {
+          const music = await findMixMusicPlaylist(token, durationMinutes, rotateIdx)
+          if (music) return { display: episode, playUri: uriOf(episode), queuePlaylistId: music.id }
+        }
+        return single(episode)
+      }
       // No guided-run episode matched — fall back to a show, then a playlist.
-      return (
+      return single(
         (await searchCatalog(token, "running coach audio guided training", "show", 0, durationMinutes)) ??
         (await searchCatalog(token, "running workout music", "playlist", 0, durationMinutes))
       )
     }
+
     if (types.includes("podcasts")) {
+      const topic = params.podcastTopic ?? "true-crime"
+
+      // 1. Curated battery — high precision.
+      const curated = await findTopicPodcast(token, topic, rotateIdx)
+      if (curated) {
+        if (wantsMusic) {
+          const [music, epUri] = await Promise.all([
+            findMixMusicPlaylist(token, durationMinutes, rotateIdx),
+            latestEpisodeUri(token, curated.id),
+          ])
+          // Chain the show's latest episode → music. If either lookup fails,
+          // just play the show on its own.
+          if (music && epUri) return { display: curated, playUri: epUri, queuePlaylistId: music.id }
+        }
+        return single(curated)
+      }
+
+      // 2. Broad show search — only reached if the topic has no curated shows.
       const topicQuery: Record<string, string> = {
         "true-crime": "true crime mystery podcast",
         "news":       "daily news current events podcast",
         "comedy":     "comedy humor funny podcast",
         "health":     "health nutrition wellness fitness podcast",
         "growth":     "self improvement personal development mindset podcast",
+        "mental-health": "mental health wellbeing mindfulness therapy podcast",
       }
-      const topic = params.podcastTopic ?? "true-crime"
       const specificPodcast = topicQuery[topic] ?? "podcast running"
-      return (
-        (await searchCatalog(token, specificPodcast, "show", 0, durationMinutes)) ??
+      return single(
+        (await searchCatalog(token, specificPodcast, "show", rotateIdx, durationMinutes)) ??
         (await searchCatalog(token, "podcast running", "show", 0, durationMinutes)) ??
         (await searchCatalog(token, "running workout music", "playlist", 0, durationMinutes))
       )
@@ -380,7 +589,7 @@ async function findContent(
     const targetBpm = parseInt(params.bpm ?? "0")
     if (targetBpm > 0) {
       const cadence = await findCadencePlaylist(token, targetBpm, durationMinutes, pickIdx)
-      if (cadence) return cadence
+      if (cadence) return single(cadence)
     }
     // No playlist in Spotify's catalog names this exact cadence — no
     // off-cadence fallback, so the caller shows a "no results" state.
@@ -397,14 +606,14 @@ async function findContent(
 
   // Phase 1: specific query
   const specific = await searchCatalog(token, specificQuery, "playlist", pickIdx, durationMinutes)
-  if (specific) return specific
+  if (specific) return single(specific)
 
   // Phase 2: generic running catalog (broad fallback)
   const generic = await searchCatalog(token, "running workout", "playlist", 0, durationMinutes)
-  if (generic) return generic
+  if (generic) return single(generic)
 
   // Phase 3: broad fallback
-  return searchCatalog(token, "workout", "playlist", 0, durationMinutes)
+  return single(await searchCatalog(token, "workout", "playlist", 0, durationMinutes))
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -427,10 +636,17 @@ export default async function ResultPage({
 
   const token = (session as { accessToken: string }).accessToken
 
-  const [result] = await Promise.all([
+  const [content] = await Promise.all([
     findContent(token, params),
     new Promise<void>((resolve) => setTimeout(resolve, MIN_LOADING_MS)),
   ])
 
-  return <ResultReveal result={result} sharing={(params.sharing ?? "solo") as "solo" | "crew"} />
+  return (
+    <ResultReveal
+      result={content?.display ?? null}
+      playUri={content?.playUri ?? null}
+      queuePlaylistId={content?.queuePlaylistId ?? null}
+      sharing={(params.sharing ?? "solo") as "solo" | "crew"}
+    />
+  )
 }
